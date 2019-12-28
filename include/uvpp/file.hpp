@@ -2,11 +2,20 @@
 
 #include "request.hpp"
 #include "error.hpp"
+#include "loop.hpp"
 
 #include <memory>
 #include <chrono>
 #include <iostream>
 #include <list>
+
+#ifndef S_IRUSR
+#   define S_IRUSR 00400
+#endif
+
+#ifndef S_IWUSR
+#   define S_IWUSR 00200
+#endif
 
 namespace uvpp {
 
@@ -142,15 +151,15 @@ public:
 
     }
 
-    File(loop &l, const std::string &path) : request<uv_fs_t>(), loop_(l.get()), path_(path)
+    File(Loop &l, const std::string &path) : request<uv_fs_t>(), loop_(l.get()), path_(path)
     {
 
     }
 
-    error open(int flags, int mode, CallbackWithResult callback)
+    Error open(int flags, int mode, CallbackWithResult callback)
     {
 
-        auto openCallback = [this, callback](error err, uv_file file)
+        auto openCallback = [this, callback](Error err, uv_file file)
         {
             if (!err)
                 this->file_ = file;
@@ -159,26 +168,26 @@ public:
 
         callbacks::store(get()->data, internal::uv_cid_fs_open, openCallback);
 
-        return error(uv_fs_open(loop_.get(), get(), path_.c_str(), flags, mode, [](uv_fs_t* req)
+        return Error(uv_fs_open(loop_.get(), get(), path_.c_str(), flags, mode, [](uv_fs_t* req)
         {
             auto result = req->result;
             uv_fs_req_cleanup(req);
 
             if (result<0)
             {
-                callbacks::invoke<decltype(openCallback)>(req->data, internal::uv_cid_fs_open, error(result), result);
+                callbacks::invoke<decltype(openCallback)>(req->data, internal::uv_cid_fs_open, Error(result), result);
             }
             else
             {
-                callbacks::invoke<decltype(openCallback)>(req->data, internal::uv_cid_fs_open, error(0), result);
+                callbacks::invoke<decltype(openCallback)>(req->data, internal::uv_cid_fs_open, Error(0), result);
             }
         }));
     }
 
-    error read(int64_t bytes, int64_t offset, std::function<void(const char *buf, ssize_t len)> callback)
+    Error read(int64_t bytes, int64_t offset, std::function<void(const char *buf, ssize_t len)> callback)
     {
 
-        if (!file_) return error(UV_EIO);
+        if (!file_) return Error(UV_EIO);
 
         uv_buf_t buffer;
         buffer.base = new char[bytes];
@@ -200,7 +209,7 @@ public:
 
         callbacks::store(get()->data, internal::uv_cid_fs_read, readCallback);
 
-        return error(uv_fs_read(loop_.get(), get(), file_, &buffer, 1, offset, [](uv_fs_t* req)
+        return Error(uv_fs_read(loop_.get(), get(), file_, &buffer, 1, offset, [](uv_fs_t* req)
         {
             auto result = req->result;
             uv_fs_req_cleanup(req);
@@ -208,87 +217,87 @@ public:
         }));
     }
 
-    error write(const char* buf, int len, int offset, CallbackWithResult callback)
+    Error write(const char* buf, int len, int offset, CallbackWithResult callback)
     {
 
-        if (!file_) return error(UV_EIO);
+        if (!file_) return Error(UV_EIO);
 
         callbacks::store(get()->data, internal::uv_cid_fs_write, callback);
 
-        uv_buf_t bufs[] = { uv_buf_t { const_cast<char*>(buf), static_cast<size_t>(len) } };
+        uv_buf_t bufs[] = { uv_buf_init(const_cast<char*>(buf), len) };
 
-        return error(uv_fs_write(loop_.get(), get(), file_, bufs, 1, offset, [](uv_fs_t* req)
+        return Error(uv_fs_write(loop_.get(), get(), file_, bufs, 1, offset, [](uv_fs_t* req)
         {
             auto result = req->result;
             uv_fs_req_cleanup(req);
             if (result < 0)
             {
-                callbacks::invoke<decltype(callback)>(req->data, internal::uv_cid_fs_write, error(result));
+                callbacks::invoke<decltype(callback)>(req->data, internal::uv_cid_fs_write, Error(result));
             }
             else
             {
-                callbacks::invoke<decltype(callback)>(req->data, internal::uv_cid_fs_write, error(0));
+                callbacks::invoke<decltype(callback)>(req->data, internal::uv_cid_fs_write, Error(0));
             }
         }));
     }
 
-    error close(std::function<void()> callback)
+    Error close(std::function<void()> callback)
     {
 
-        if (!file_) return error(UV_EIO);
+        if (!file_) return Error(UV_EIO);
 
         callbacks::store(get()->data, internal::uv_cid_fs_close, callback);
 
-        return error(uv_fs_close(loop_.get(), get(), file_, [](uv_fs_t* req)
+        return Error(uv_fs_close(loop_.get(), get(), file_, [](uv_fs_t* req)
         {
             uv_fs_req_cleanup(req);
             callbacks::invoke<decltype(callback)>(req->data, internal::uv_cid_fs_close);
         }));
     }
 
-    error close()
+    Error close()
     {
 
-        if (!file_) return error(UV_EIO);
+        if (!file_) return Error(UV_EIO);
 
-        return error(uv_fs_close(loop_.get(), get(), file_, nullptr));
+        return Error(uv_fs_close(loop_.get(), get(), file_, nullptr));
     }
 
-    error unlink(CallbackWithResult callback)
+    Error unlink(CallbackWithResult callback)
     {
 
-        if (!file_) return error(UV_EIO);
+        if (!file_) return Error(UV_EIO);
 
         callbacks::store(get()->data, internal::uv_cid_fs_unlink, callback);
 
-        return error(uv_fs_close(loop_.get(), get(), file_, [](uv_fs_t* req)
+        return Error(uv_fs_close(loop_.get(), get(), file_, [](uv_fs_t* req)
         {
             int result = req->result;
             uv_fs_req_cleanup(req);
             if (result < 0)
             {
-                callbacks::invoke<decltype(callback)>(req->data, internal::uv_cid_fs_unlink, error(result));
+                callbacks::invoke<decltype(callback)>(req->data, internal::uv_cid_fs_unlink, Error(result));
             }
             else
             {
-                callbacks::invoke<decltype(callback)>(req->data, internal::uv_cid_fs_unlink, error(0));
+                callbacks::invoke<decltype(callback)>(req->data, internal::uv_cid_fs_unlink, Error(0));
             }
         }));
     }
 
-    error unlink()
+    Error unlink()
     {
 
-        if (!file_) return error(UV_EIO);
+        if (!file_) return Error(UV_EIO);
 
-        return error(uv_fs_close(loop_.get(), get(), file_, nullptr));
+        return Error(uv_fs_close(loop_.get(), get(), file_, nullptr));
     }
 
-    error stats(std::function<void(error err, Stats stats)> callback)
+    Error stats(std::function<void(Error err, Stats stats)> callback)
     {
         callbacks::store(get()->data, internal::uv_cid_fs_stats, callback);
 
-        return error(
+        return Error(
                    uv_fs_stat(loop_.get(), get(), path_.c_str(), [](uv_fs_t* req)
         {
             int result = req->result;
@@ -306,11 +315,11 @@ public:
 
             if (result < 0)
             {
-                callbacks::invoke<decltype(callback)>(req->data, internal::uv_cid_fs_stats, error(result), stats);
+                callbacks::invoke<decltype(callback)>(req->data, internal::uv_cid_fs_stats, Error(result), stats);
             }
             else
             {
-                callbacks::invoke<decltype(callback)>(req->data, internal::uv_cid_fs_stats, error(0), stats);
+                callbacks::invoke<decltype(callback)>(req->data, internal::uv_cid_fs_stats, Error(0), stats);
             }
 
         })
@@ -332,18 +341,18 @@ public:
         else
         {
             uv_fs_req_cleanup(get());
-            throw exception(error(err).str());
+            throw Exception(Error(err).str());
         }
     }
 
-    error fsync(CallbackWithResult callback)
+    Error fsync(CallbackWithResult callback)
     {
 
-        if (!file_) return error(UV_EIO);
+        if (!file_) return Error(UV_EIO);
 
         callbacks::store(get()->data, internal::uv_cid_fs_fsync, callback);
 
-        return error(
+        return Error(
                    uv_fs_fsync(loop_.get(), get(), file_, [](uv_fs_t* req)
         {
             int result = req->result;
@@ -352,22 +361,22 @@ public:
 
             if (result < 0)
             {
-                callbacks::invoke<decltype(callback)>(req->data, internal::uv_cid_fs_fsync, error(result));
+                callbacks::invoke<decltype(callback)>(req->data, internal::uv_cid_fs_fsync, Error(result));
             }
             else
             {
-                callbacks::invoke<decltype(callback)>(req->data, internal::uv_cid_fs_fsync, error(0));
+                callbacks::invoke<decltype(callback)>(req->data, internal::uv_cid_fs_fsync, Error(0));
             }
         })
                );
     }
 
-    error rename(const std::string &newName, CallbackWithResult callback)
+    Error rename(const std::string &newName, CallbackWithResult callback)
     {
 
         callbacks::store(get()->data, internal::uv_cid_fs_rename, callback);
 
-        return error(
+        return Error(
                    uv_fs_rename(loop_.get(), get(), path_.c_str(), newName.c_str(), [](uv_fs_t* req)
         {
             int result = req->result;
@@ -376,25 +385,25 @@ public:
 
             if (result < 0)
             {
-                callbacks::invoke<decltype(callback)>(req->data, internal::uv_cid_fs_rename, error(result));
+                callbacks::invoke<decltype(callback)>(req->data, internal::uv_cid_fs_rename, Error(result));
             }
             else
             {
-                callbacks::invoke<decltype(callback)>(req->data, internal::uv_cid_fs_rename, error(0));
+                callbacks::invoke<decltype(callback)>(req->data, internal::uv_cid_fs_rename, Error(0));
             }
         })
                );
     }
 
-    error sendfile(const File &out, int64_t in_offset, size_t length, CallbackWithResult callback)
+    Error sendfile(const File &out, int64_t in_offset, size_t length, CallbackWithResult callback)
     {
 
-        if (!file_) return error(UV_EIO);
-        if (!out.file_) return error(UV_EIO);
+        if (!file_) return Error(UV_EIO);
+        if (!out.file_) return Error(UV_EIO);
 
         callbacks::store(get()->data, internal::uv_cid_fs_sendfile, callback);
 
-        return error(
+        return Error(
                    uv_fs_sendfile(loop_.get(), get(), file_, out.file_, in_offset, length, [](uv_fs_t* req)
         {
             int result = req->result;
@@ -403,17 +412,17 @@ public:
 
             if (result < 0)
             {
-                callbacks::invoke<decltype(callback)>(req->data, internal::uv_cid_fs_sendfile, error(result));
+                callbacks::invoke<decltype(callback)>(req->data, internal::uv_cid_fs_sendfile, Error(result));
             }
             else
             {
-                callbacks::invoke<decltype(callback)>(req->data, internal::uv_cid_fs_sendfile, error(0));
+                callbacks::invoke<decltype(callback)>(req->data, internal::uv_cid_fs_sendfile, Error(0));
             }
         })
                );
     }
 
-    error scandir(std::function<void(error err, std::list<Entry> files)> callback)
+    Error scandir(std::function<void(Error err, std::list<Entry> files)> callback)
     {
 
         auto scanDirCallback = [this, callback](int result)
@@ -422,27 +431,27 @@ public:
             if (result < 0)
             {
                 uv_fs_req_cleanup(this->get());
-                callback(error(result), files);
+                callback(Error(result), files);
             }
             else
             {
                 uv_dirent_t ent;
                 for (int i=0; i<result; i++)
                 {
-                    error err = error(uv_fs_scandir_next(this->get(), &ent));
+                    Error err = Error(uv_fs_scandir_next(this->get(), &ent));
                     if (!err)
                     {
                         files.push_back(Entry(this,ent));
                     }
                 }
                 uv_fs_req_cleanup(this->get());
-                callback(error(0), files);
+                callback(Error(0), files);
             }
         };
 
         callbacks::store(get()->data, internal::uv_cid_fs_scandir, scanDirCallback);
 
-        return error(
+        return Error(
                    uv_fs_scandir(loop_.get(), get(), path_.c_str(), 0, [](uv_fs_t* req)
         {
             callbacks::invoke<decltype(scanDirCallback)>(req->data, internal::uv_cid_fs_scandir, req->result);
@@ -467,7 +476,7 @@ public:
         }
         else
         {
-            throw exception(error(err).str());
+            throw Exception(Error(err).str());
         }
     }
 
@@ -475,7 +484,7 @@ public:
 
 private:
     const std::string path_;
-    loop loop_;
+    Loop loop_;
     uv_file file_=0;
 };
 

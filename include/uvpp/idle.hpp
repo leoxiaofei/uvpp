@@ -14,24 +14,24 @@ public:
         init(loop_, callback);
     }
 
-    Idle(loop& l, Callback callback):
+    Idle(Loop& l, Callback callback):
         handle<uv_idle_t>(), loop_(l.get())
     {
         init(loop_, callback);
     }
 
-    error start()
+    Error start()
     {
-        return error(uv_idle_start(get(), [](uv_idle_t* req)
+        return Error(uv_idle_start(get(), [](uv_idle_t* req)
         {
             callbacks::invoke<Callback>(req->data, internal::uv_cid_idle);
         }));
 
     }
 
-    error stop()
+    Error stop()
     {
-        return error(uv_idle_stop(get()));
+        return Error(uv_idle_stop(get()));
     }
 
 private:

@@ -21,7 +21,7 @@ public:
         uv_tty_init(uv_default_loop(), get(), static_cast<int>(type_), static_cast<int>(readable));
     }
 
-    TTY(loop& l, Type type, bool readable):
+    TTY(Loop& l, Type type, bool readable):
         stream<uv_tty_t>(), type_(type)
     {
         uv_tty_init(l.get(), get(), static_cast<int>(type_), static_cast<int>(readable));

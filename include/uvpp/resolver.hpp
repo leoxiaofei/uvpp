@@ -10,7 +10,7 @@ class Resolver : public request<uv_getaddrinfo_t>
 {
 public:
     typedef std::function<void(const error&, bool, const std::string&)> Callback; // status, is_ip4, addr
-    Resolver(loop& l) : request<uv_getaddrinfo_t>(), loop_(l.get())
+    Resolver(Loop& l) : request<uv_getaddrinfo_t>(), loop_(l.get())
     {
 
     }
@@ -37,14 +37,14 @@ public:
                         } else
                         {
                             callbacks::invoke<decltype(callback)>(req->data, internal::uv_cid_resolve
-                                , error(EAI_ADDRFAMILY)
+                                , Error(EAI_ADDRFAMILY)
                                 , false
                                 , addr);
                             return;
                         }
                     }
                     bool ip4 = res ? res->ai_family == AF_INET : false;
-                    callbacks::invoke<decltype(callback)>(req->data, internal::uv_cid_resolve, error(status), ip4, addr);
+                    callbacks::invoke<decltype(callback)>(req->data, internal::uv_cid_resolve, Error(status), ip4, addr);
                 }
                 , addr.c_str(), 0, 0) == 0);
     }

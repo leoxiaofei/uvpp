@@ -14,16 +14,16 @@ public:
         uv_timer_init(uv_default_loop(), get());
     }
 
-    Timer(loop& l):
+    Timer(Loop& l):
         handle<uv_timer_t>()
     {
         uv_timer_init(l.get(), get());
     }
 
-    error start(std::function<void()> callback, const std::chrono::duration<uint64_t, std::milli> &timeout, const std::chrono::duration<uint64_t, std::milli> &repeat)
+    Error start(std::function<void()> callback, const std::chrono::duration<uint64_t, std::milli> &timeout, const std::chrono::duration<uint64_t, std::milli> &repeat)
     {
         callbacks::store(get()->data, internal::uv_cid_timer, callback);
-        return error(uv_timer_start(get(),
+        return Error(uv_timer_start(get(),
                                     [](uv_timer_t* handle)
         {
             callbacks::invoke<decltype(callback)>(handle->data, internal::uv_cid_timer);
@@ -33,10 +33,10 @@ public:
                                    ));
     }
 
-    error start(std::function<void()> callback, const std::chrono::duration<uint64_t, std::milli> &timeout)
+    Error start(std::function<void()> callback, const std::chrono::duration<uint64_t, std::milli> &timeout)
     {
         callbacks::store(get()->data, internal::uv_cid_timer, callback);
-        return error(uv_timer_start(get(),
+        return Error(uv_timer_start(get(),
                                     [](uv_timer_t* handle)
         {
             callbacks::invoke<decltype(callback)>(handle->data, internal::uv_cid_timer);
@@ -46,14 +46,14 @@ public:
                                    ));
     }
 
-    error stop()
+    Error stop()
     {
-        return error(uv_timer_stop(get()));
+        return Error(uv_timer_stop(get()));
     }
 
-    error again()
+    Error again()
     {
-        return error(uv_timer_again(get()));
+        return Error(uv_timer_again(get()));
     }
 };
 }

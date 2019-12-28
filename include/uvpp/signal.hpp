@@ -24,10 +24,10 @@ public:
     }
 
 
-    error start(int signum, SignalHandler callback)
+    Error start(int signum, SignalHandler callback)
     {
         callbacks::store(get()->data, internal::uv_cid_signal, callback);
-        return error(uv_signal_start(get(),
+        return Error(uv_signal_start(get(),
                                      [](uv_signal_t* handle, int signum)
         {
             callbacks::invoke<decltype(callback)>(handle->data, internal::uv_cid_signal, signum);
@@ -35,9 +35,9 @@ public:
         signum));
     }
 
-    error stop()
+    Error stop()
     {
-        return error(uv_signal_stop(get()));
+        return Error(uv_signal_stop(get()));
     }
 };
 }

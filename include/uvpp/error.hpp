@@ -6,18 +6,18 @@
 #include <uv.h>
 
 namespace uvpp {
-class exception: public std::runtime_error
+class Exception: public std::runtime_error
 {
 public:
-    exception(const std::string& message):
+    Exception(const std::string& message):
         std::runtime_error(message)
     {}
 };
 
-class error
+class Error
 {
 public:
-    error(int c):
+    Error(int c):
         m_error(c)
     {
     }

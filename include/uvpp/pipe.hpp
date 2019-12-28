@@ -13,7 +13,7 @@ public:
         uv_pipe_init(uv_default_loop(), get(), fd_pass ? 1 : 0);
     }
 
-    Pipe(loop& l, const bool fd_pass = false):
+    Pipe(Loop& l, const bool fd_pass = false):
         stream()
     {
         uv_pipe_init(l.get(), get(), fd_pass ? 1 : 0);
@@ -30,7 +30,7 @@ public:
         uv_pipe_connect(new uv_connect_t, get(), name.c_str(), [](uv_connect_t* req, int status)
         {
             std::unique_ptr<uv_connect_t> reqHolder(req);
-            callbacks::invoke<decltype(callback)>(req->handle->data, internal::uv_cid_connect, error(status));
+            callbacks::invoke<decltype(callback)>(req->handle->data, internal::uv_cid_connect, Error(status));
         });
     }
 

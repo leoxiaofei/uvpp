@@ -16,7 +16,7 @@
 #include <memory>
 #include <limits>
 
-void myerror(uvpp::error e)
+void myerror(uvpp::Error e)
 {
     if (e)
         std::cout << "UVPP Error: " << e.str() << std::endl;
@@ -24,7 +24,7 @@ void myerror(uvpp::error e)
 
 int main()
 {
-    uvpp::loop loop;
+    uvpp::Loop loop;
     uvpp::Resolver resolver(loop);
     resolver.resolve("localhost", [](const uvpp::error& error, bool ip4, const std::string& addr)
     {

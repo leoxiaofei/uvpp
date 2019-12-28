@@ -80,7 +80,6 @@ class handle
 protected:
     handle():
         m_uv_handle(new HANDLE_T())
-        , m_will_close(false)
     {
         assert(m_uv_handle);
         m_uv_handle->data = new callbacks();
@@ -89,10 +88,8 @@ protected:
 
     handle(handle&& other):
         m_uv_handle(other.m_uv_handle)
-        , m_will_close(other.m_will_close)
     {
         other.m_uv_handle = nullptr;
-        other.m_will_close = false;
     }
 
     handle& operator=(handle&& other)
@@ -100,16 +97,13 @@ protected:
         if (this == &other)
             return *this;
         m_uv_handle = other.m_uv_handle;
-        m_will_close = other.m_will_close;
         other.m_uv_handle = nullptr;
-        other.m_will_close = false;
         return *this;
     }
 
     virtual ~handle()
     {
-        if (! m_will_close)
-            free_handle(&m_uv_handle);
+        close();
     }
 
     handle(const handle&) = delete;
@@ -141,7 +135,6 @@ public:
         }
 
         callbacks::store(get()->data, internal::uv_cid_close, callback);
-        m_will_close = true;
         uv_close(get<uv_handle_t>(),
                  [](uv_handle_t* h)
         {
@@ -152,7 +145,6 @@ public:
 
 protected:
     HANDLE_T* m_uv_handle;
-    bool m_will_close;
 };
 
 }

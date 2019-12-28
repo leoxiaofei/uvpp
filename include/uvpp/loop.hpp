@@ -2,28 +2,25 @@
 
 #include "error.hpp"
 
+#include <functional>
 #include <memory>
 
 namespace uvpp {
 /**
  *  Class that represents the uv_loop instance.
  */
-class loop
+class Loop
 {
 public:
     /**
      *  Default constructor
      *  @param use_default indicates whether to use default loop or create a new loop.
      */
-    loop(bool use_default=false)
-        : default_loop(use_default)
-        , m_uv_loop(use_default ? uv_default_loop() : new uv_loop_t
-                    ,   [this](uv_loop_t *loop)
+    Loop(bool use_default=false)
+        : m_uv_loop(use_default ? uv_default_loop() : new uv_loop_t,
+			[use_default](uv_loop_t *loop) { if (!use_default) delete loop; })
     {
-        destroy(loop);
-    })
-    {
-        if (!default_loop && uv_loop_init(m_uv_loop.get()))
+        if (!use_default && uv_loop_init(m_uv_loop.get()))
         {
             throw std::runtime_error("uv_loop_init error");
         }
@@ -32,7 +29,7 @@ public:
     /**
      *  Destructor
      */
-    ~loop()
+    ~Loop()
     {
         if (m_uv_loop.get())
         {
@@ -41,15 +38,15 @@ public:
         }
     }
 
-    loop(const loop&) = delete;
-    loop& operator=(const loop&) = delete;
-    loop(loop&& other)
+    Loop(const Loop&) = delete;
+    Loop& operator=(const Loop&) = delete;
+    Loop(Loop&& other)
         : m_uv_loop(std::forward<decltype(other.m_uv_loop)>(other.m_uv_loop))
     {
 
     }
 
-    loop& operator=(loop&& other)
+    Loop& operator=(Loop&& other)
     {
         if (this != &other)
         {
@@ -120,15 +117,7 @@ private:
 
     // Custom deleter
     typedef std::function<void(uv_loop_t*)> Deleter;
-    void destroy(uv_loop_t *loop) const
-    {
-        if (!default_loop)
-        {
-            delete loop;
-        }
-    }
 
-    bool default_loop;
     std::unique_ptr<uv_loop_t, Deleter> m_uv_loop;
 };
 

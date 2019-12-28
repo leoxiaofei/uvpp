@@ -31,7 +31,7 @@ public:
         uv_fs_event_init(uv_default_loop(), get());
     }
 
-    FsEvent(loop& l):
+    FsEvent(Loop& l):
         handle<uv_fs_event_t>()
     {
         uv_fs_event_init(l.get(), get());
@@ -42,19 +42,19 @@ public:
         if (started_) stop();
     }
 
-    error start(const std::string &path, unsigned int flags, std::function<void(error err,const std::string &path, int status,Type event)> callback)
+    Error start(const std::string &path, unsigned int flags, std::function<void(Error err,const std::string &path, int status,Type event)> callback)
     {
 
         auto fsEventCallback = [this,path,callback](const char* filename, int events, int status)
         {
             if (status<0)
-                callback(error(status), std::string(filename), status, NONE);
+                callback(Error(status), std::string(filename), status, NONE);
             else
             {
 
                 if (events & UV_CHANGE)
                 {
-                    callback(error(status), std::string(filename), status, CHANGED);
+                    callback(Error(status), std::string(filename), status, CHANGED);
                 }
 
                 if (events & UV_RENAME)
@@ -64,11 +64,11 @@ public:
 
                     if (fileExists(fullPath.c_str()))
                     {
-                        callback(error(status), std::string(filename), status, CREATED);
+                        callback(Error(status), std::string(filename), status, CREATED);
                     }
                     else
                     {
-                        callback(error(status), std::string(filename), status, DELETED);
+                        callback(Error(status), std::string(filename), status, DELETED);
                     }
                 }
             }
@@ -77,7 +77,7 @@ public:
         callbacks::store(get()->data, internal::uv_cid_fs_event, fsEventCallback);
 
         started_ = true;
-        return error(uv_fs_event_start(get(),
+        return Error(uv_fs_event_start(get(),
                                        [](uv_fs_event_t* handle, const char* filename, int events, int status)
         {
             callbacks::invoke<decltype(fsEventCallback)>(handle->data, internal::uv_cid_fs_event, filename, events,status);
@@ -85,9 +85,9 @@ public:
                                       ));
     }
 
-    error stop()
+    Error stop()
     {
-        return error(uv_fs_event_stop(get()));
+        return Error(uv_fs_event_stop(get()));
     }
 
 private:

@@ -14,7 +14,7 @@ public:
         uv_tcp_init(uv_default_loop(), get());
     }
 
-    Tcp(loop& l):
+    Tcp(Loop& l):
         stream()
     {
         uv_tcp_init(l.get(), get());
@@ -55,7 +55,7 @@ public:
         return uv_tcp_connect(new uv_connect_t, get(), reinterpret_cast<const sockaddr*>(&addr), [](uv_connect_t* req, int status)
         {
             std::unique_ptr<uv_connect_t> reqHolder(req);
-            callbacks::invoke<decltype(callback)>(req->handle->data, internal::uv_cid_connect, error(status));
+            callbacks::invoke<decltype(callback)>(req->handle->data, internal::uv_cid_connect, Error(status));
         }) == 0;
     }
 
@@ -66,7 +66,7 @@ public:
         return uv_tcp_connect(new uv_connect_t, get(), reinterpret_cast<const sockaddr*>(&addr), [](uv_connect_t* req, int status)
         {
             std::unique_ptr<uv_connect_t> reqHolder(req);
-            callbacks::invoke<decltype(callback)>(req->handle->data, internal::uv_cid_connect6, error(status));
+            callbacks::invoke<decltype(callback)>(req->handle->data, internal::uv_cid_connect6, Error(status));
         }) == 0;
     }
 

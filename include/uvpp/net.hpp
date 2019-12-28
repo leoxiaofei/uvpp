@@ -2,8 +2,10 @@
 
 #include <memory>
 #include <sstream>
-//#include "../src/cs/config.hpp"
 
+#ifdef _MSC_BUILD
+#pragma comment(lib,"ws2_32.lib")
+#endif
 
 /// Formatted string, allows to use stream operators and returns a std::string with the resulting format
 #define fs(x) \
@@ -18,7 +20,7 @@ inline ip4_addr to_ip4_addr(const std::string& ip, int port)
     ip4_addr result;
     int res = 0;
     if ((res = uv_ip4_addr(ip.c_str(), port, &result)) != 0)
-        throw exception(fs("uv_ip4_addr error: " << error(res).str()));
+        throw Exception(fs("uv_ip4_addr error: " << Error(res).str()));
     return result;
 }
 
@@ -27,7 +29,7 @@ inline ip6_addr to_ip6_addr(const std::string& ip, int port)
     ip6_addr result;
     int res = 0;
     if ((res = uv_ip6_addr(ip.c_str(), port, &result)) != 0)
-        throw exception(fs("uv_ip6_addr error: " << error(res).str()));
+        throw Exception(fs("uv_ip6_addr error: " << Error(res).str()));
     return result;
 }
 

@@ -7,7 +7,7 @@
 
 namespace uvpp {
 typedef std::function<void()> Callback;
-typedef std::function<void(error)> CallbackWithResult;
+typedef std::function<void(Error)> CallbackWithResult;
 
 namespace internal {
 enum uv_callback_id

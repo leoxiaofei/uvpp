@@ -8,7 +8,7 @@ namespace uvpp {
 class Work : public request<uv_work_t>
 {
 public:
-    Work(loop& l) : request<uv_work_t>(), loop_(l.get())
+    Work(Loop& l) : request<uv_work_t>(), loop_(l.get())
     {
 
     }
@@ -28,7 +28,7 @@ public:
         },
         [](uv_work_t* req, int status)
         {
-            callbacks::invoke<decltype(afterCallback)>(req->data, internal::uv_cid_after_work, error(status));
+            callbacks::invoke<decltype(afterCallback)>(req->data, internal::uv_cid_after_work, Error(status));
         }) == 0
                );
     }
