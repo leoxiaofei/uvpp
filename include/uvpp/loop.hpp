@@ -1,6 +1,7 @@
 #pragma once
 
 #include "error.hpp"
+#include "request.hpp"
 
 #include <functional>
 #include <memory>
@@ -11,54 +12,46 @@ namespace uvpp {
  */
 class Loop
 {
+	using Deleter = void(*)(uv_loop_t *);
+    std::unique_ptr<uv_loop_t, Deleter> m_uv_loop;
 public:
     /**
      *  Default constructor
-     *  @param use_default indicates whether to use default loop or create a new loop.
      */
-    Loop(bool use_default=false)
-        : m_uv_loop(use_default ? uv_default_loop() : new uv_loop_t,
-			[use_default](uv_loop_t *loop) { if (!use_default) delete loop; })
+    Loop()
+		: m_uv_loop(new uv_loop_t, 
+			[](uv_loop_t* p) { delete p; })
     {
-        if (!use_default && uv_loop_init(m_uv_loop.get()))
+        if (uv_loop_init(get()))
         {
             throw std::runtime_error("uv_loop_init error");
         }
     }
+
+	Loop(std::unique_ptr<uv_loop_t, Deleter>& uv_loop)
+		: m_uv_loop(std::move(uv_loop))
+	{
+
+	}
 
     /**
      *  Destructor
      */
     ~Loop()
     {
-        if (m_uv_loop.get())
+        if (m_uv_loop)
         {
-            // no matter default loop or not: http://nikhilm.github.io/uvbook/basics.html#event-loops
-            uv_loop_close(m_uv_loop.get());
+            uv_loop_close(get());
         }
     }
 
     Loop(const Loop&) = delete;
     Loop& operator=(const Loop&) = delete;
-    Loop(Loop&& other)
-        : m_uv_loop(std::forward<decltype(other.m_uv_loop)>(other.m_uv_loop))
-    {
-
-    }
-
-    Loop& operator=(Loop&& other)
-    {
-        if (this != &other)
-        {
-            m_uv_loop = std::forward<decltype(other.m_uv_loop)>(other.m_uv_loop);
-        }
-        return *this;
-    }
 
     /**
      *  Returns internal handle for libuv functions.
      */
-    uv_loop_t* get()
+    inline uv_loop_t* get()
     {
         return m_uv_loop.get();
     }
@@ -68,7 +61,7 @@ public:
      */
     bool run()
     {
-        return uv_run(m_uv_loop.get(), UV_RUN_DEFAULT) == 0;
+        return uv_run(get(), UV_RUN_DEFAULT) == 0;
     }
 
     /**
@@ -76,7 +69,7 @@ public:
      */
     bool run_once()
     {
-        return uv_run(m_uv_loop.get(), UV_RUN_ONCE) == 0;
+        return uv_run(get(), UV_RUN_ONCE) == 0;
     }
 
     /**
@@ -84,7 +77,7 @@ public:
      */
     bool run_nowait()
     {
-        return uv_run(m_uv_loop.get(), UV_RUN_NOWAIT) == 0;
+        return uv_run(get(), UV_RUN_NOWAIT) == 0;
     }
 
     /**
@@ -93,7 +86,7 @@ public:
      */
     void update_time()
     {
-        uv_update_time(m_uv_loop.get());
+        uv_update_time(get());
     }
 
     /**
@@ -102,7 +95,7 @@ public:
      */
     int64_t now()
     {
-        return uv_now(m_uv_loop.get());
+        return uv_now(get());
     }
 
     /**
@@ -110,40 +103,45 @@ public:
      */
     void stop()
     {
-        uv_stop(m_uv_loop.get());
+        uv_stop(get());
     }
 
-private:
+	Result queue_work(const Callback& cb_work)
+	{
+		return Result(uv_queue_work(get(), NewReq<Work>(cb_work),
+			Work::work_cb, Work::after_work_cb));
+	}
 
-    // Custom deleter
-    typedef std::function<void(uv_loop_t*)> Deleter;
+	Result queue_work(const Callback& cb_work,
+		const CallbackWithResult& cb_after_work)
+	{
+		return Result(uv_queue_work(get(), NewReq<Work>(cb_work, cb_after_work),
+			Work::work_cb, Work::after_work_cb));
+	}
 
-    std::unique_ptr<uv_loop_t, Deleter> m_uv_loop;
+
+	static std::shared_ptr<Loop> getDefault()
+	{
+		static std::weak_ptr<Loop> ref;
+
+		std::shared_ptr<Loop> loop;
+
+		if (ref.expired()) 
+		{
+			if (uv_loop_t* def = uv_default_loop())
+			{
+				auto ptr = std::unique_ptr<uv_loop_t, Deleter>(def, [](uv_loop_t *) {});
+				loop = std::make_shared<Loop>(ptr);
+				ref = loop;
+			}
+		}
+		else
+		{
+			loop = ref.lock();
+		}
+
+		return loop;
+	}
 };
 
-/**
- *  Starts the default loop.
- */
-inline int run()
-{
-    return uv_run(uv_default_loop(), UV_RUN_DEFAULT);
-}
-
-/**
- *  Polls for new events for the default loop once.
- *  Blocks only if there are no pending events.
- */
-inline int run_once()
-{
-    return uv_run(uv_default_loop(), UV_RUN_ONCE);
-}
-
-/**
- *  Polls for new events for the default loop once.
- *  Non-blocking.
- */
-inline int run_nowait()
-{
-    return uv_run(uv_default_loop(), UV_RUN_NOWAIT);
-}
 }

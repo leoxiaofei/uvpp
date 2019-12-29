@@ -2,116 +2,116 @@
 
 #include "handle.hpp"
 #include "error.hpp"
+#include "request.hpp"
+#include "pool.hpp"
 #include <algorithm>
 #include <memory>
 
 namespace uvpp {
-template<typename HANDLE_T>
-class stream : public handle<HANDLE_T>
-{
-protected:
-    stream():
-        handle<HANDLE_T>()
-    {}
 
-public:
-    bool listen(CallbackWithResult callback, int backlog=128)
-    {
-        callbacks::store(handle<HANDLE_T>::get()->data, uvpp::internal::uv_cid_listen, callback);
-        return uv_listen(handle<HANDLE_T>::template get<uv_stream_t>(), backlog, [](uv_stream_t* s, int status)
-        {
-            callbacks::invoke<decltype(callback)>(s->data, uvpp::internal::uv_cid_listen, Error(status));
-        }) == 0;
-    }
+	typedef std::function<void(const char* buf, size_t len)> CallbackWithBuffer;
 
-    bool accept(stream& client)
-    {
-        return uv_accept(handle<HANDLE_T>::template get<uv_stream_t>(), client.handle<HANDLE_T>::template get<uv_stream_t>()) == 0;
-    }
+	template<typename HANDLE_O, typename HANDLE_T>
+	class Stream : public Handle<HANDLE_O, HANDLE_T>
+	{
+		typedef Stream<HANDLE_O, HANDLE_T> SELF;
+	public:
+		CallbackWithResult m_cb_listen;
+		CallbackWithBuffer m_cb_read;
 
-    bool read_start(std::function<void(const char* buf, size_t len)> callback)
-    {
-        return read_start<0>(callback);
-    }
+	protected:
+		Stream()
+			: Handle<HANDLE_O, HANDLE_T>()
+		{}
 
-    template<size_t max_alloc_size>
-    bool read_start(std::function<void(const char* buf, size_t len)> callback)
-    {
-        callbacks::store(handle<HANDLE_T>::get()->data, uvpp::internal::uv_cid_read_start, callback);
+		~Stream()
+		{
+			read_stop();
+		}
 
-        return uv_read_start(handle<HANDLE_T>::template get<uv_stream_t>(),
-                             [](uv_handle_t*, size_t suggested_size, uv_buf_t* buf)
-        {
-            assert(buf);
-            auto size = (std::max)(suggested_size, max_alloc_size);
-            buf->base = new char[size];
-            buf->len = size;
-        },
-        [](uv_stream_t* s, ssize_t nread, const uv_buf_t* buf)
-        {
-			auto del = std::default_delete<char[]>();
-            // handle callback throwing exception: hold data in unique_ptr
-            std::unique_ptr<char, decltype(del) > baseHolder(buf->base, del);
+	public:
+		Result listen(CallbackWithResult cb_listen, int backlog = 128)
+		{
+			m_cb_listen = cb_listen;
+			return Result(uv_listen(this->get<uv_stream_t>(), backlog,
+				INVOKE_HD_CBRST(m_cb_listen)));
+		}
 
-            if (nread < 0)
-            {
-                // FIXME error has nread set to -errno, handle failure
-                // assert(nread == UV_EOF); ???
-                callbacks::invoke<decltype(callback)>(s->data, uvpp::internal::uv_cid_read_start, nullptr, nread);
-            }
-            else if (nread >= 0)
-            {
-                callbacks::invoke<decltype(callback)>(s->data, uvpp::internal::uv_cid_read_start, buf->base, nread);
-            }
-        }) == 0;
-    }
+		Result accept(Stream& client)
+		{
+			return Result(uv_accept(this->get<uv_stream_t>(), 
+				client.get<uv_stream_t>()));
+		}
 
-    bool read_stop()
-    {
-        return uv_read_stop(handle<HANDLE_T>::template get<uv_stream_t>()) == 0;
-    }
+		Result read_start(CallbackWithBuffer cb_read)
+		{
+			m_cb_read = cb_read;
+			return Result(uv_read_start(this->get<uv_stream_t>(),
+				[](uv_handle_t*, size_t suggested_size, uv_buf_t* buf)
+				{
+					assert(buf);
+					buf->base = DPool::malloc(suggested_size, &suggested_size);
+					buf->len = suggested_size;
+				},
+				[](uv_stream_t* s, ssize_t nread, const uv_buf_t* buf)
+				{
+					auto del = &DPool::free;
+					// handle callback throwing exception: hold data in unique_ptr
+					std::unique_ptr<char, decltype(del) > baseHolder(buf->base, del);
 
-    bool write(const char* buf, int len, CallbackWithResult callback)
-    {
-        uv_buf_t bufs[] = { uv_buf_init(const_cast<char*>(buf), len) };
-        callbacks::store(handle<HANDLE_T>::get()->data, uvpp::internal::uv_cid_write, callback);
-        return uv_write(new uv_write_t, handle<HANDLE_T>::template get<uv_stream_t>(), bufs, 1, [](uv_write_t* req, int status)
-        {
-            std::unique_ptr<uv_write_t> reqHolder(req);
-            callbacks::invoke<decltype(callback)>(req->handle->data, uvpp::internal::uv_cid_write, Error(status));
-        }) == 0;
-    }
+					if (SELF::self(s)->m_cb_read)
+					{
+						SELF::self(s)->m_cb_read(nread < 0 ? 0 : buf->base, nread);
+					}
+				}));
+		}
 
-    bool write(const std::string& buf, CallbackWithResult callback)
-    {
-        uv_buf_t bufs[] = { uv_buf_init(const_cast<char*>(buf.c_str()), buf.length()) };
-        callbacks::store(handle<HANDLE_T>::get()->data, uvpp::internal::uv_cid_write, callback);
-        return uv_write(new uv_write_t, handle<HANDLE_T>::template get<uv_stream_t>(), bufs, 1, [](uv_write_t* req, int status)
-        {
-            std::unique_ptr<uv_write_t> reqHolder(req);
-            callbacks::invoke<decltype(callback)>(req->handle->data, uvpp::internal::uv_cid_write, Error(status));
-        }) == 0;
-    }
+		Result read_stop()
+		{
+			return Result(uv_read_stop(this->get<uv_stream_t>()));
+		}
 
-    bool write(const std::vector<char>& buf, CallbackWithResult callback)
-    {
-        uv_buf_t bufs[] = { uv_buf_init(const_cast<char*>(&buf[0]), buf.size()) };
-        callbacks::store(handle<HANDLE_T>::get()->data, uvpp::internal::uv_cid_write, callback);
-        return uv_write(new uv_write_t, handle<HANDLE_T>::template get<uv_stream_t>(), bufs, 1, [](uv_write_t* req, int status)
-        {
-            std::unique_ptr<uv_write_t> reqHolder(req);
-            callbacks::invoke<decltype(callback)>(req->handle->data, uvpp::internal::uv_cid_write, Error(status));
-        }) == 0;
-    }
+		Result write(const char* buf, int len, CallbackWithResult callback)
+		{
+			uv_buf_t bufs[] = { uv_buf_init(const_cast<char*>(buf), len) };
+			return Result(uv_write(NewReq<Write>(callback), this->get<uv_stream_t>(),
+				bufs, 1, &Write::write_cb));
+		}
 
-    bool shutdown(CallbackWithResult callback)
-    {
-        callbacks::store(handle<HANDLE_T>::get()->data, uvpp::internal::uv_cid_shutdown, callback);
-        return uv_shutdown(new uv_shutdown_t, handle<HANDLE_T>::template get<uv_stream_t>(), [](uv_shutdown_t* req, int status)
-        {
-            std::unique_ptr<uv_shutdown_t> reqHolder(req);
-            callbacks::invoke<decltype(callback)>(req->handle->data, uvpp::internal::uv_cid_shutdown, Error(status));
-        }) == 0;
-    }
-};
+		bool write(const std::string& buf, CallbackWithResult callback)
+		{
+			uv_buf_t bufs[] = { uv_buf_init(const_cast<char*>(buf.c_str()), buf.length()) };
+			return Result(uv_write(NewReq<Write>(callback), this->get<uv_stream_t>(),
+				bufs, 1, &Write::write_cb));
+		}
+
+		bool write(const std::vector<char>& buf, CallbackWithResult callback)
+		{
+			uv_buf_t bufs[] = { uv_buf_init(const_cast<char*>(&buf[0]), buf.size()) };
+			return Result(uv_write(NewReq<Write>(callback), 
+				this->get<uv_stream_t>(), bufs, 1, &Write::write_cb));
+		}
+
+		Result shutdown(CallbackWithResult callback)
+		{
+			return Result(uv_shutdown(new Shutdown(callback),
+				this->get<uv_stream_t>(), Shutdown::shutdown_cb));
+		}
+
+		Result is_readable() const
+		{
+			return Result(uv_is_readable(this->get<uv_stream_t>()));
+		}
+
+		Result is_writable() const
+		{
+			return Result(uv_is_writable(this->get<uv_stream_t>()));
+		}
+
+		Result stream_set_blocking(int blocking)
+		{
+			return Result(uv_stream_set_blocking(this->get<uv_stream_t>(), blocking));
+		}
+
+	};
 }

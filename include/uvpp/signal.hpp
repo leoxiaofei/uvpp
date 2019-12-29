@@ -2,42 +2,44 @@
 
 #include "handle.hpp"
 #include "error.hpp"
+#include "loop.hpp"
 
 namespace uvpp {
 
-class Signal : public handle<uv_signal_t>
+class Signal : public Handle<Signal, uv_signal_t>
 {
 public:
+    typedef std::function<void(int sugnum)> CallbackWithSignal;
     
-    typedef std::function<void(int sugnum)> SignalHandler;
-    
-    Signal():
-        handle<uv_signal_t>()
+	CallbackWithSignal m_cb_signal;
+
+public:
+    Signal()
     {
         uv_signal_init(uv_default_loop(), get());
     }
 
-    Signal(loop& l):
-        handle<uv_signal_t>()
+    Signal(Loop& l)
     {
         uv_signal_init(l.get(), get());
     }
 
-
-    Error start(int signum, SignalHandler callback)
+    Result start(int signum, const CallbackWithSignal& cb_signal)
     {
-        callbacks::store(get()->data, internal::uv_cid_signal, callback);
-        return Error(uv_signal_start(get(),
-                                     [](uv_signal_t* handle, int signum)
+		m_cb_signal = cb_signal;
+
+        return Result(uv_signal_start(get(), [](uv_signal_t* handle, int signum)
         {
-            callbacks::invoke<decltype(callback)>(handle->data, internal::uv_cid_signal, signum);
-        },
-        signum));
+			if (Signal::self(handle)->m_cb_signal)
+			{
+				Signal::self(handle)->m_cb_signal(signum);
+			}
+		}, signum));
     }
 
-    Error stop()
+    Result stop()
     {
-        return Error(uv_signal_stop(get()));
+        return Result(uv_signal_stop(get()));
     }
 };
 }

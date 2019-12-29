@@ -2,38 +2,45 @@
 
 #include "handle.hpp"
 #include "error.hpp"
+#include "loop.hpp"
 
 namespace uvpp {
 
-class Poll : public handle<uv_poll_t>
-{
-public:
-    Poll(int fd):
-        handle<uv_poll_t>()
-    {
-        uv_poll_init(uv_default_loop(), get(),fd);
-    }
+	typedef std::function<void(int status, int events)> CallbackWithEvents;
 
-    Poll(Loop& l, int fd):
-        handle<uv_poll_t>()
-    {
-        uv_poll_init(l.get(), get(), fd);
-    }
+	class Poll : public Handle<Poll, uv_poll_t>
+	{
+	public:
+		CallbackWithEvents m_cb_poll;
+	public:
+		Poll(int fd)
+			: Handle<Poll, uv_poll_t>()
+		{
+			uv_poll_init(uv_default_loop(), get(), fd);
+		}
 
-    Error start( int events, std::function<void(int status,int events)> callback)
-    {
-        callbacks::store(get()->data, internal::uv_cid_poll, callback);
-        return Error(uv_poll_start(get(), events,
-                                   [](uv_poll_t* handle, int status, int events)
-        {
-            callbacks::invoke<decltype(callback)>(handle->data, internal::uv_cid_poll, status, events);
-        }
-                                  ));
-    }
+		Poll(Loop& l, int fd)
+			: Handle<Poll, uv_poll_t>()
+		{
+			uv_poll_init(l.get(), get(), fd);
+		}
 
-    Error stop()
-    {
-        return Error(uv_poll_stop(get()));
-    }
-};
+		Result start(int events, const CallbackWithEvents& cb_poll)
+		{
+			m_cb_poll = cb_poll;
+			return Result(uv_poll_start(get(), events,
+				[](uv_poll_t* handle, int status, int events)
+			{
+				if (Poll::self(handle)->m_cb_poll)
+				{
+					Poll::self(handle)->m_cb_poll(status, events);
+				}
+			} ));
+		}
+
+		Result stop()
+		{
+			return Result(uv_poll_stop(get()));
+		}
+	};
 }

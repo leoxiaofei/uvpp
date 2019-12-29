@@ -5,55 +5,40 @@
 #include <chrono>
 
 namespace uvpp {
-class Timer : public handle<uv_timer_t>
-{
-public:
-    Timer():
-        handle<uv_timer_t>()
-    {
-        uv_timer_init(uv_default_loop(), get());
-    }
+	class Timer : public Handle<Timer, uv_timer_t>
+	{
+		Callback m_cb_timer;
+	public:
+		Timer()
+		{
+			uv_timer_init(uv_default_loop(), get());
+		}
 
-    Timer(Loop& l):
-        handle<uv_timer_t>()
-    {
-        uv_timer_init(l.get(), get());
-    }
+		Timer(Loop& l)
+		{
+			uv_timer_init(l.get(), get());
+		}
 
-    Error start(std::function<void()> callback, const std::chrono::duration<uint64_t, std::milli> &timeout, const std::chrono::duration<uint64_t, std::milli> &repeat)
-    {
-        callbacks::store(get()->data, internal::uv_cid_timer, callback);
-        return Error(uv_timer_start(get(),
-                                    [](uv_timer_t* handle)
-        {
-            callbacks::invoke<decltype(callback)>(handle->data, internal::uv_cid_timer);
-        },
-        timeout.count(),
-        repeat.count()
-                                   ));
-    }
+		Result start(const Callback& cb_timer,
+			const uint64_t &timeout, const uint64_t &repeat = 0)
+		{
+			m_cb_timer = cb_timer;
+			return Result(uv_timer_start(get(), INVOKE_HD_CB(m_cb_timer), timeout, repeat));
+		}
 
-    Error start(std::function<void()> callback, const std::chrono::duration<uint64_t, std::milli> &timeout)
-    {
-        callbacks::store(get()->data, internal::uv_cid_timer, callback);
-        return Error(uv_timer_start(get(),
-                                    [](uv_timer_t* handle)
-        {
-            callbacks::invoke<decltype(callback)>(handle->data, internal::uv_cid_timer);
-        },
-        timeout.count(),
-        0
-                                   ));
-    }
+		Result start(const uint64_t &timeout, const uint64_t &repeat = 0)
+		{
+			return Result(uv_timer_start(get(), INVOKE_HD_CB(m_cb_timer), timeout, repeat));
+		}
 
-    Error stop()
-    {
-        return Error(uv_timer_stop(get()));
-    }
+		Result stop()
+		{
+			return Result(uv_timer_stop(get()));
+		}
 
-    Error again()
-    {
-        return Error(uv_timer_again(get()));
-    }
-};
+		Result again()
+		{
+			return Result(uv_timer_again(get()));
+		}
+	};
 }

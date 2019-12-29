@@ -1,114 +1,181 @@
 #pragma once
 
-#include "callback.hpp"
 #include "error.hpp"
+#include <uv.h>
 
-namespace uvpp {
-namespace {
-template<typename REQUEST_T>
-inline void free_request(REQUEST_T** h)
+namespace uvpp
 {
-    if (*h == nullptr)
-        return;
+	/**
+	 * Wraps a libuv's uv_handle_t, or derived such as uv_stream_t, uv_tcp_t etc.
+	 *
+	 * Resources are released on the close call as mandated by libuv and NOT on the dtor
+	 */
+	template<typename REQUEST_O, typename REQUEST_T>
+	class Request
+	{
+		REQUEST_T m_uv_request;
+	protected:
+		Request()
+		{
+			m_uv_request.data = this;
+		}
 
-    if ((*h)->data)
-    {
-        delete reinterpret_cast<callbacks*>((*h)->data);
-        (*h)->data = nullptr;
-    }
+		~Request()
+		{
+		}
 
-    switch ((*h)->type)
-    {
+		Request(const Request&) = delete;
+		Request& operator=(const Request&) = delete;
 
-        case UV_WORK:
-            delete reinterpret_cast<uv_work_t*>(*h);
-            break;
+	public:
+		typedef REQUEST_T UV_REQ;
+		template<typename T = REQUEST_T>
+		T* get()
+		{
+			return reinterpret_cast<T*>(&m_uv_request);
+		}
 
-        case UV_FS:
-            delete reinterpret_cast<uv_fs_t*>(*h);
-            break;
-            
-        case UV_GETADDRINFO:
-            delete reinterpret_cast<uv_getaddrinfo_t*>(*h);
-            break;
-            
-        default:
-            assert(0);
-            throw std::runtime_error("free_request can't handle this type");
-            break;
-            *h = nullptr;
-    }
-}
+		template<typename T = REQUEST_T>
+		const T* get() const
+		{
+			return reinterpret_cast<const T*>(&m_uv_request);
+		}
 
-}
+		template<typename SUB_REQUEST_T>
+		static REQUEST_O* self(SUB_REQUEST_T* handle)
+		{
+			return reinterpret_cast<REQUEST_O*>(handle->data);
+		}
 
-/**
- * Wraps a libuv's uv_handle_t, or derived such as uv_stream_t, uv_tcp_t etc.
- *
- * Resources are released on the close call as mandated by libuv and NOT on the dtor
- */
-template<typename REQUEST_T>
-class request
-{
-protected:
-    request():
-        m_uv_request(new REQUEST_T())
-        , m_will_close(false)
-    {
-        assert(m_uv_request);
-        m_uv_request->data = new callbacks();
-        assert(m_uv_request->data);
-    }
+		int cancel()
+		{
+			return uv_cancel(get<uv_req_t>());
+		}
 
-    request(request&& other):
-        m_uv_request(other.m_uv_request)
-        , m_will_close(other.m_will_close)
-    {
-        other.m_uv_request = nullptr;
-        other.m_will_close = false;
-    }
+	protected:
+	};
 
-    request& operator=(request&& other)
-    {
-        if (this == &other)
-            return *this;
-        m_uv_request = other.m_uv_request;
-        m_will_close = other.m_will_close;
-        other.m_uv_request = nullptr;
-        other.m_will_close = false;
-        return *this;
-    }
+	class Write : public Request<Write, uv_write_t>
+	{
+		CallbackWithResult m_cb_write;
+	public:
+		Write(const CallbackWithResult& cb_write)
+			: m_cb_write(cb_write)
+		{}
 
-    ~request()
-    {
-        if (! m_will_close)
-            free_request(&m_uv_request);
-    }
+		static void write_cb(uv_write_t* req, int status)
+		{
+			std::unique_ptr<Write> sp(self(req));
+			if (sp->m_cb_write)
+			{
+				sp->m_cb_write(Result(status));
+			}
+		}
 
-    request(const request&) = delete;
-    request& operator=(const request&) = delete;
+	};
 
-public:
-    template<typename T=REQUEST_T>
-    T* get()
-    {
-        return reinterpret_cast<T*>(m_uv_request);
-    }
+	class Shutdown : public Request<Shutdown, uv_shutdown_t>
+	{
+		CallbackWithResult m_cb_shutdown;
+	public:
+		Shutdown(const CallbackWithResult& cb_shutdown)
+			: m_cb_shutdown(cb_shutdown)
+		{}
 
-    template<typename T=REQUEST_T>
-    const T* get() const
-    {
-        return reinterpret_cast<const T*>(m_uv_request);
-    }
+		static void shutdown_cb(uv_shutdown_t* req, int status)
+		{
+			std::unique_ptr<Shutdown> sp(self(req));
+			if (sp->m_cb_shutdown)
+			{
+				sp->m_cb_shutdown(Result(status));
+			}
+		}
 
-    int cancel()
-    {
-        return uv_cancel((uv_req_t*)get());
-    }
+	};
 
-protected:
-    REQUEST_T* m_uv_request;
-    bool m_will_close;
-};
+	class Work : public Request<Work, uv_work_t>
+	{
+		Callback m_cb_work;
+		CallbackWithResult m_cb_after_work;
+	public:
+		Work(const Callback& cb_work)
+			: m_cb_work(cb_work)
+		{}
 
+		Work(const Callback& cb_work,
+			const CallbackWithResult& cb_after_work)
+			: m_cb_work(cb_work)
+			, m_cb_after_work(cb_after_work)
+		{}
+
+		static void work_cb(uv_work_t* req)
+		{
+			Work* sp = self(req);
+			if (sp->m_cb_work)
+			{
+				sp->m_cb_work();
+			}
+		}
+
+		static void after_work_cb(uv_work_t* req, int status)
+		{
+			std::unique_ptr<Work> sp(self(req));
+			if (sp->m_cb_after_work)
+			{
+				sp->m_cb_after_work(Result(status));
+			}
+		}
+	};
+
+	class Connect : public Request<Connect, uv_connect_t>
+	{
+		CallbackWithResult m_cb_connect;
+	public:
+		Connect(const CallbackWithResult& cb_connect)
+			: m_cb_connect(cb_connect)
+		{}
+
+		static void connect_cb(uv_connect_t* req, int status)
+		{
+			std::unique_ptr<Connect> sp(self(req));
+			if (sp->m_cb_connect)
+			{
+				sp->m_cb_connect(Result(status));
+			}
+
+		}
+	};
+
+	typedef std::function<void(Result,
+		const std::shared_ptr<addrinfo>&)> CallbackWithAddrInfo;
+
+	class GetAddrInfo : public Request<GetAddrInfo, uv_getaddrinfo_t>
+	{
+		CallbackWithAddrInfo m_cb_getaddrinfo;
+
+	public:
+		GetAddrInfo(const CallbackWithAddrInfo& cb_getaddrinfo) 
+			: m_cb_getaddrinfo(cb_getaddrinfo)
+		{
+
+		}
+
+		static void getaddrinfo_cb(uv_getaddrinfo_t* req, 
+			int status, struct addrinfo* res)
+		{
+			std::shared_ptr<addrinfo> sp_res(res, uv_freeaddrinfo);
+
+			if(self(req)->m_cb_getaddrinfo)
+			{
+				self(req)->m_cb_getaddrinfo(Result(status), sp_res);
+			}
+		}
+	};
+
+	template<class T, typename... Args>
+	typename T::UV_REQ* NewReq(const Args&... args)
+	{
+		T* req = new T(args...);
+		return req->get();
+	}
 }

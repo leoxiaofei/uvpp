@@ -1,151 +1,74 @@
 #pragma once
 
-#include "callback.hpp"
 #include "error.hpp"
+#include "callback.hpp"
+
 
 namespace uvpp {
-namespace {
-template<typename HANDLE_T>
-inline void free_handle(HANDLE_T** h)
-{
-    if (*h == nullptr)
-        return;
+	/**
+	 * Wraps a libuv's uv_handle_t, or derived such as uv_stream_t, uv_tcp_t etc.
+	 *
+	 * Resources are released on the close call as mandated by libuv and NOT on the dtor
+	 */
+	template<typename HANDLE_O, typename HANDLE_T>
+	class Handle
+	{
+		typedef Handle<HANDLE_O, HANDLE_T> SELF;
+		HANDLE_T m_uv_handle;
 
-    if ((*h)->data)
-    {
-        delete reinterpret_cast<callbacks*>((*h)->data);
-        (*h)->data = nullptr;
-    }
+	public:
+		Callback m_cb_close;
 
-    switch ((*h)->type)
-    {
-        case UV_TCP:
-            delete reinterpret_cast<uv_tcp_t*>(*h);
-            break;
+	protected:
+		Handle()
+		{
+			m_uv_handle.data = this;
+		}
 
-        case UV_UDP:
-            delete reinterpret_cast<uv_udp_t*>(*h);
-            break;
+		virtual ~Handle()
+		{
+			close();
+		}
 
-        case UV_NAMED_PIPE:
-            delete reinterpret_cast<uv_pipe_t*>(*h);
-            break;
+		Handle(const Handle&) = delete;
+		Handle& operator=(const Handle&) = delete;
 
-        case UV_TTY:
-            delete reinterpret_cast<uv_tty_t*>(*h);
-            break;
+	public:
+		template<typename T = HANDLE_T>
+		T* get()
+		{
+			return reinterpret_cast<T*>(&m_uv_handle);
+		}
 
-        case UV_TIMER:
-            delete reinterpret_cast<uv_timer_t*>(*h);
-            break;
+		template<typename T = HANDLE_T>
+		const T* get() const
+		{
+			return reinterpret_cast<const T*>(&m_uv_handle);
+		}
 
-        case UV_SIGNAL:
-            delete reinterpret_cast<uv_signal_t*>(*h);
-            break;
+		template<typename SUB_REQUEST_T>
+		static HANDLE_O* self(SUB_REQUEST_T* handle)
+		{
+			return reinterpret_cast<HANDLE_O*>(handle->data);
+		}
 
-        case UV_POLL:
-            delete reinterpret_cast<uv_poll_t*>(*h);
-            break;
+		bool is_active() const
+		{
+			return uv_is_active(get<uv_handle_t>()) != 0;
+		}
 
-        case UV_ASYNC:
-            delete reinterpret_cast<uv_async_t*>(*h);
-            break;
+		void close()
+		{
+			if (!uv_is_closing(get<uv_handle_t>()))
+			{
+				//typedef Handle<HANDLE_O, uv_handle_t> SELF;
 
-        case UV_IDLE:
-            delete reinterpret_cast<uv_idle_t*>(*h);
-            break;
+				uv_close(this->get<uv_handle_t>(), INVOKE_HD_CB(m_cb_close));
+			}
+		}
 
-        case UV_FS_EVENT:
-            delete reinterpret_cast<uv_fs_event_t*>(*h);
-            break;
-
-        default:
-            assert(0);
-            throw std::runtime_error("free_handle can't handle this type");
-            break;
-            *h = nullptr;
-    }
-}
-
-}
-
-/**
- * Wraps a libuv's uv_handle_t, or derived such as uv_stream_t, uv_tcp_t etc.
- *
- * Resources are released on the close call as mandated by libuv and NOT on the dtor
- */
-template<typename HANDLE_T>
-class handle
-{
-protected:
-    handle():
-        m_uv_handle(new HANDLE_T())
-    {
-        assert(m_uv_handle);
-        m_uv_handle->data = new callbacks();
-        assert(m_uv_handle->data);
-    }
-
-    handle(handle&& other):
-        m_uv_handle(other.m_uv_handle)
-    {
-        other.m_uv_handle = nullptr;
-    }
-
-    handle& operator=(handle&& other)
-    {
-        if (this == &other)
-            return *this;
-        m_uv_handle = other.m_uv_handle;
-        other.m_uv_handle = nullptr;
-        return *this;
-    }
-
-    virtual ~handle()
-    {
-        close();
-    }
-
-    handle(const handle&) = delete;
-    handle& operator=(const handle&) = delete;
-
-public:
-    template<typename T=HANDLE_T>
-    T* get()
-    {
-        return reinterpret_cast<T*>(m_uv_handle);
-    }
-
-    template<typename T=HANDLE_T>
-    const T* get() const
-    {
-        return reinterpret_cast<const T*>(m_uv_handle);
-    }
-
-    bool is_active() const
-    {
-        return uv_is_active(reinterpret_cast<const uv_handle_t*>(m_uv_handle)) != 0;
-    }
-
-    void close(Callback callback = [] {})
-    {
-        if (uv_is_closing(get<uv_handle_t>()))
-        {
-            return; // prevent assertion on double close
-        }
-
-        callbacks::store(get()->data, internal::uv_cid_close, callback);
-        uv_close(get<uv_handle_t>(),
-                 [](uv_handle_t* h)
-        {
-            callbacks::invoke<decltype(callback)>(h->data, internal::uv_cid_close);
-            free_handle(&h);
-        });
-    }
-
-protected:
-    HANDLE_T* m_uv_handle;
-};
+	protected:
+	};
 
 }
 

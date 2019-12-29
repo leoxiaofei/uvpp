@@ -4,34 +4,30 @@
 #include "loop.hpp"
 
 namespace uvpp {
-class Pipe : public stream<uv_pipe_t>
+class Pipe : public Stream<Pipe, uv_pipe_t>
 {
 public:
-    Pipe(const bool fd_pass = false):
-        stream()
+    Pipe(const bool fd_pass = false)
+		: Stream()
     {
         uv_pipe_init(uv_default_loop(), get(), fd_pass ? 1 : 0);
     }
 
-    Pipe(Loop& l, const bool fd_pass = false):
-        stream()
+    Pipe(Loop& l, const bool fd_pass = false)
+		: Stream()
     {
         uv_pipe_init(l.get(), get(), fd_pass ? 1 : 0);
     }
 
-    bool bind(const std::string& name)
+    Result bind(const std::string& name)
     {
-        return uv_pipe_bind(get(), name.c_str()) == 0;
+		return Result(uv_pipe_bind(get(), name.c_str()));
     }
 
-    void connect(const std::string& name, CallbackWithResult callback)
+    void connect(const std::string& name, const CallbackWithResult& cb_connect)
     {
-        callbacks::store(get()->data, internal::uv_cid_connect, callback);
-        uv_pipe_connect(new uv_connect_t, get(), name.c_str(), [](uv_connect_t* req, int status)
-        {
-            std::unique_ptr<uv_connect_t> reqHolder(req);
-            callbacks::invoke<decltype(callback)>(req->handle->data, internal::uv_cid_connect, Error(status));
-        });
+		uv_pipe_connect(NewReq<Connect>(cb_connect), get(),
+			name.c_str(), &Connect::connect_cb);
     }
 
     bool getsockname(std::string& name)

@@ -1,48 +1,39 @@
 #pragma once
 
-#include "request.hpp"
-#include "error.hpp"
 #include "loop.hpp"
+#include "handle.hpp"
 
 namespace uvpp {
-class Idle : public handle<uv_idle_t>
+class Idle : public Handle<Idle, uv_idle_t>
 {
 public:
-    Idle(Callback callback):
-        handle<uv_idle_t>(), loop_(uv_default_loop())
+	Callback m_cb_idle;
+public:
+    Idle()
+		: Handle<Idle, uv_idle_t>()
     {
-        init(loop_, callback);
+		uv_idle_init(uv_default_loop(), get());
     }
 
-    Idle(Loop& l, Callback callback):
-        handle<uv_idle_t>(), loop_(l.get())
+    Idle(Loop& l, Callback callback)
+		: Handle<Idle, uv_idle_t>()
     {
-        init(loop_, callback);
+		uv_idle_init(l.get(), get());
+	}
+
+    Result start(const Callback& cb_idle)
+    {
+		m_cb_idle = cb_idle;
+        return Result(uv_idle_start(get(), INVOKE_HD_CB(m_cb_idle)));
     }
 
-    Error start()
+    Result stop()
     {
-        return Error(uv_idle_start(get(), [](uv_idle_t* req)
-        {
-            callbacks::invoke<Callback>(req->data, internal::uv_cid_idle);
-        }));
-
-    }
-
-    Error stop()
-    {
-        return Error(uv_idle_stop(get()));
+        return Result(uv_idle_stop(get()));
     }
 
 private:
 
-    void init(uv_loop_t *loop, Callback callback)
-    {
-        callbacks::store(get()->data, internal::uv_cid_idle, callback);
-        uv_idle_init(loop, get());
-    }
-
-    uv_loop_t *loop_;
 };
 }
 

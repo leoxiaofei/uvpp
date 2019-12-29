@@ -2,6 +2,9 @@
 
 #include <memory>
 #include <sstream>
+#include "error.hpp"
+#include "loop.hpp"
+#include "request.hpp"
 
 #ifdef _MSC_BUILD
 #pragma comment(lib,"ws2_32.lib")
@@ -20,7 +23,7 @@ inline ip4_addr to_ip4_addr(const std::string& ip, int port)
     ip4_addr result;
     int res = 0;
     if ((res = uv_ip4_addr(ip.c_str(), port, &result)) != 0)
-        throw Exception(fs("uv_ip4_addr error: " << Error(res).str()));
+        throw Exception(fs("uv_ip4_addr error: " << Result(res).str()));
     return result;
 }
 
@@ -29,7 +32,7 @@ inline ip6_addr to_ip6_addr(const std::string& ip, int port)
     ip6_addr result;
     int res = 0;
     if ((res = uv_ip6_addr(ip.c_str(), port, &result)) != 0)
-        throw Exception(fs("uv_ip6_addr error: " << Error(res).str()));
+        throw Exception(fs("uv_ip6_addr error: " << Result(res).str()));
     return result;
 }
 
@@ -56,5 +59,15 @@ inline bool from_ip6_addr(ip6_addr* src, std::string& ip, int& port)
     }
     return false;
 }
+
+
+Result resolve(Loop& loop, const std::string& addr, 
+	const CallbackWithAddrInfo& cb_getaddrinfo)
+{
+	return Result(uv_getaddrinfo(loop.get(),
+		NewReq<GetAddrInfo>(cb_getaddrinfo),
+		&GetAddrInfo::getaddrinfo_cb, addr.c_str(), 0, 0));
+}
+
 }
 #undef fs

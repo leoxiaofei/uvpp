@@ -6,35 +6,35 @@
 #include <uv.h>
 
 namespace uvpp {
-class Exception: public std::runtime_error
-{
-public:
-    Exception(const std::string& message):
-        std::runtime_error(message)
-    {}
-};
+	class Exception : public std::runtime_error
+	{
+	public:
+		Exception(const std::string& message)
+			: std::runtime_error(message)
+		{}
+	};
 
-class Error
-{
-public:
-    Error(int c):
-        m_error(c)
-    {
-    }
+	class Result
+	{
+	public:
+		Result(int c) :
+			m_error(c)
+		{
+		}
 
-public:
-    explicit operator bool() const
-    {
-        return m_error != 0;
-    }
+	public:
+		explicit operator bool() const
+		{
+			return m_error == 0;
+		}
 
-    const char* str() const
-    {
-        return uv_strerror(m_error);
-    }
+		const char* str() const
+		{
+			return uv_strerror(m_error);
+		}
 
-private:
-    int m_error;
-};
+	private:
+		int m_error;
+	};
 }
 
