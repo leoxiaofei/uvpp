@@ -18,6 +18,7 @@ namespace uvpp {
 	public:
 		CallbackWithResult m_cb_listen;
 		CallbackWithBuffer m_cb_read;
+		Callback m_cb_read_error;
 
 	protected:
 		Stream()
@@ -43,9 +44,12 @@ namespace uvpp {
 				client.get<uv_stream_t>()));
 		}
 
-		Result read_start(CallbackWithBuffer cb_read)
+		Result read_start(const CallbackWithBuffer& cb_read,
+			const Callback& cb_read_error)
 		{
 			m_cb_read = cb_read;
+			m_cb_read_error = cb_read_error;
+
 			return Result(uv_read_start(this->get<uv_stream_t>(),
 				[](uv_handle_t*, size_t suggested_size, uv_buf_t* buf)
 				{
@@ -55,13 +59,24 @@ namespace uvpp {
 				},
 				[](uv_stream_t* s, ssize_t nread, const uv_buf_t* buf)
 				{
-					auto del = &DPool::free;
-					// handle callback throwing exception: hold data in unique_ptr
-					std::unique_ptr<char, decltype(del) > baseHolder(buf->base, del);
+					typedef void (*FREEFUNC)(char* p);
+					std::unique_ptr<char, FREEFUNC> baseHolder(
+						buf->base, &DPool::free);
 
-					if (SELF::self(s)->m_cb_read)
+					if (nread > 0)
 					{
-						SELF::self(s)->m_cb_read(nread < 0 ? 0 : buf->base, nread);
+						if (SELF::self(s)->m_cb_read)
+						{
+							SELF::self(s)->m_cb_read(buf->base, nread);
+						}
+					}
+					else
+					{
+						if (SELF::self(s)->m_cb_read_error)
+						{
+							SELF::self(s)->m_cb_read_error();
+						}
+
 					}
 				}));
 		}

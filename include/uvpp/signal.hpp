@@ -6,40 +6,40 @@
 
 namespace uvpp {
 
-class Signal : public Handle<Signal, uv_signal_t>
-{
-public:
-    typedef std::function<void(int sugnum)> CallbackWithSignal;
-    
-	CallbackWithSignal m_cb_signal;
+	class Signal : public Handle<Signal, uv_signal_t>
+	{
+	public:
+		typedef std::function<void(int sugnum)> CallbackWithSignal;
 
-public:
-    Signal()
-    {
-        uv_signal_init(uv_default_loop(), get());
-    }
+		CallbackWithSignal m_cb_signal;
 
-    Signal(Loop& l)
-    {
-        uv_signal_init(l.get(), get());
-    }
+	public:
+		Signal()
+		{
+			uv_signal_init(uv_default_loop(), get());
+		}
 
-    Result start(int signum, const CallbackWithSignal& cb_signal)
-    {
-		m_cb_signal = cb_signal;
+		Signal(Loop& l)
+		{
+			uv_signal_init(l.get(), get());
+		}
 
-        return Result(uv_signal_start(get(), [](uv_signal_t* handle, int signum)
-        {
-			if (Signal::self(handle)->m_cb_signal)
+		Result start(int signum, const CallbackWithSignal& cb_signal)
+		{
+			m_cb_signal = cb_signal;
+
+			return Result(uv_signal_start(get(), [](uv_signal_t* handle, int signum)
 			{
-				Signal::self(handle)->m_cb_signal(signum);
-			}
-		}, signum));
-    }
+				if (Signal::self(handle)->m_cb_signal)
+				{
+					Signal::self(handle)->m_cb_signal(signum);
+				}
+			}, signum));
+		}
 
-    Result stop()
-    {
-        return Result(uv_signal_stop(get()));
-    }
-};
+		Result stop()
+		{
+			return Result(uv_signal_stop(get()));
+		}
+	};
 }

@@ -61,8 +61,6 @@ namespace uvpp {
 		{
 			if (!uv_is_closing(get<uv_handle_t>()))
 			{
-				//typedef Handle<HANDLE_O, uv_handle_t> SELF;
-
 				uv_close(this->get<uv_handle_t>(), INVOKE_HD_CB(m_cb_close));
 			}
 		}
