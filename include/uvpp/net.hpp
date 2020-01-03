@@ -8,6 +8,9 @@
 
 #ifdef _MSC_BUILD
 #pragma comment(lib,"ws2_32.lib")
+#pragma comment(lib,"iphlpapi.lib")
+#pragma comment(lib,"psapi.lib")
+#pragma comment(lib,"userenv.lib")
 #endif
 
 /// Formatted string, allows to use stream operators and returns a std::string with the resulting format
@@ -60,8 +63,7 @@ inline bool from_ip6_addr(ip6_addr* src, std::string& ip, int& port)
     return false;
 }
 
-
-Result resolve(Loop& loop, const std::string& addr, 
+inline Result resolve(Loop& loop, const std::string& addr, 
 	const CallbackWithAddrInfo& cb_getaddrinfo)
 {
 	return Result(uv_getaddrinfo(loop.get(),

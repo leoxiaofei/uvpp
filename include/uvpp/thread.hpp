@@ -15,12 +15,21 @@ namespace uvpp
 		Thread(const Callback& cb_run)
 		{
 			m_cb_run = cb_run;
-			uv_thread_create(&m_thd_id, Thread::run, this);
 		}
 
 		~Thread()
 		{
 
+		}
+
+		void start()
+		{
+			uv_thread_create(&m_thd_id, Thread::run, this);
+		}
+
+		bool running()
+		{
+			return m_thd_id;
 		}
 
 		int join()
@@ -42,6 +51,7 @@ namespace uvpp
 		static void run(void* data)
 		{
 			static_cast<Thread*>(data)->m_cb_run();
+			static_cast<Thread*>(data)->m_thd_id = 0;
 		}
 	};
 }
