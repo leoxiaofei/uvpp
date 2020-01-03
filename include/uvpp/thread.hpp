@@ -29,7 +29,7 @@ namespace uvpp
 
 		bool running()
 		{
-			return m_thd_id;
+			return m_thd_id != 0;
 		}
 
 		int join()

@@ -55,7 +55,7 @@ namespace uvpp {
 				{
 					assert(buf);
 					buf->base = DPool::malloc(suggested_size, &suggested_size);
-					buf->len = suggested_size;
+					buf->len = (int)suggested_size;
 				},
 				[](uv_stream_t* s, ssize_t nread, const uv_buf_t* buf)
 				{

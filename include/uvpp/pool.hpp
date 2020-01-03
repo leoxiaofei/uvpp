@@ -88,8 +88,8 @@ protected:
 	static inline int calcN(const size_t& size)
 	{
 		int n = 0;
-		int tmp = size >> 10;
-		for (int ix = 1; ; ix = ix << 1)
+		size_t tmp = size >> 10;
+		for (size_t ix = 1; ; ix = ix << 1)
 		{
 			if (ix >= tmp)
 			{
