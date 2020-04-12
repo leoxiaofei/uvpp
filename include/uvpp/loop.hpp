@@ -119,7 +119,6 @@ public:
 			Work::work_cb, Work::after_work_cb));
 	}
 
-
 	static std::shared_ptr<Loop> getDefault()
 	{
 		static std::weak_ptr<Loop> ref;

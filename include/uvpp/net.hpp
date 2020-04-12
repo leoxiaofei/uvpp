@@ -63,12 +63,21 @@ inline bool from_ip6_addr(ip6_addr* src, std::string& ip, int& port)
     return false;
 }
 
-inline Result resolve(Loop& loop, const std::string& addr, 
+inline Result resolve(Loop& loop, const std::string& addr, uint16_t uPort,
 	const CallbackWithAddrInfo& cb_getaddrinfo)
 {
+	//struct addrinfo* phints = new struct addrinfo();
+	//
+    struct addrinfo hints;
+    hints.ai_family = PF_INET;
+    hints.ai_socktype = SOCK_STREAM;
+    hints.ai_protocol = IPPROTO_TCP;
+    hints.ai_flags = 0;
+
+	std::string strPort = std::to_string(uPort);
 	return Result(uv_getaddrinfo(loop.get(),
 		NewReq<GetAddrInfo>(cb_getaddrinfo),
-		&GetAddrInfo::getaddrinfo_cb, addr.c_str(), 0, 0));
+		&GetAddrInfo::getaddrinfo_cb, addr.c_str(), strPort.c_str(), &hints));
 }
 
 }

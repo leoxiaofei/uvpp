@@ -160,14 +160,15 @@ namespace uvpp
 
 		}
 
-		static void getaddrinfo_cb(uv_getaddrinfo_t* req, 
-			int status, struct addrinfo* res)
+		static void getaddrinfo_cb(uv_getaddrinfo_t *resolver, 
+			int status, struct addrinfo *res)
 		{
+			std::unique_ptr<GetAddrInfo> sp(self(resolver));
 			std::shared_ptr<addrinfo> sp_res(res, uv_freeaddrinfo);
 
-			if(self(req)->m_cb_getaddrinfo)
+			if(sp->m_cb_getaddrinfo)
 			{
-				self(req)->m_cb_getaddrinfo(Result(status), sp_res);
+				sp->m_cb_getaddrinfo(Result(status), sp_res);
 			}
 		}
 	};

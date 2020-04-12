@@ -55,6 +55,13 @@ namespace uvpp {
 				reinterpret_cast<const sockaddr*>(&addr), &Connect::connect_cb));
 		}
 
+		Result connect(const sockaddr* addr, const CallbackWithResult& cb_connect)
+		{
+			return Result(uv_tcp_connect(NewReq<Connect>(cb_connect), get(),
+				addr, &Connect::connect_cb));
+		}
+
+
 		Result connect6(const std::string& ip, int port, CallbackWithResult cb_connect)
 		{
 			ip6_addr addr = to_ip6_addr(ip, port);

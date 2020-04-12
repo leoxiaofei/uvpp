@@ -86,25 +86,36 @@ namespace uvpp {
 			return Result(uv_read_stop(this->get<uv_stream_t>()));
 		}
 
-		Result write(const char* buf, int len, CallbackWithResult callback)
+		Result write(const char* buf, unsigned int len, CallbackWithResult callback)
 		{
 			uv_buf_t bufs[] = { uv_buf_init(const_cast<char*>(buf), len) };
 			return Result(uv_write(NewReq<Write>(callback), this->get<uv_stream_t>(),
 				bufs, 1, &Write::write_cb));
 		}
 
-		bool write(const std::string& buf, CallbackWithResult callback)
+		Result write(const std::string& buf, CallbackWithResult callback)
 		{
-			uv_buf_t bufs[] = { uv_buf_init(const_cast<char*>(buf.c_str()), buf.length()) };
+			uv_buf_t bufs[] = { uv_buf_init(const_cast<char*>(buf.c_str()),
+				static_cast<uint32_t>(buf.size())) };
 			return Result(uv_write(NewReq<Write>(callback), this->get<uv_stream_t>(),
 				bufs, 1, &Write::write_cb));
 		}
 
-		bool write(const std::vector<char>& buf, CallbackWithResult callback)
+		Result write(const std::vector<char>& buf, CallbackWithResult callback)
 		{
-			uv_buf_t bufs[] = { uv_buf_init(const_cast<char*>(&buf[0]), buf.size()) };
+			uv_buf_t bufs[] = { uv_buf_init(const_cast<char*>(&buf[0]),
+				static_cast<uint32_t>(buf.size())) };
 			return Result(uv_write(NewReq<Write>(callback), 
 				this->get<uv_stream_t>(), bufs, 1, &Write::write_cb));
+		}
+
+		template <typename...T>
+		Result write(CallbackWithResult callback, const T&... buf)
+		{
+			uv_buf_t bufs[] = { uv_buf_init(const_cast<char*>(buf.data()),
+				static_cast<uint32_t>(buf.size()))... };
+			return Result(uv_write(NewReq<Write>(callback),
+				this->get<uv_stream_t>(), bufs, sizeof...(T), &Write::write_cb));
 		}
 
 		Result shutdown(CallbackWithResult callback)
@@ -127,6 +138,5 @@ namespace uvpp {
 		{
 			return Result(uv_stream_set_blocking(this->get<uv_stream_t>(), blocking));
 		}
-
 	};
 }
