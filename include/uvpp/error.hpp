@@ -17,8 +17,8 @@ namespace uvpp {
 	class Result
 	{
 	public:
-		Result(int c) :
-			m_error(c)
+		Result(int c) 
+			: m_error(c)
 		{
 		}
 

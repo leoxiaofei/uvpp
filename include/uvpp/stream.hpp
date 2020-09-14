@@ -120,7 +120,7 @@ namespace uvpp {
 
 		Result shutdown(CallbackWithResult callback)
 		{
-			return Result(uv_shutdown(new Shutdown(callback),
+			return Result(uv_shutdown(NewReq<Shutdown>(callback),
 				this->get<uv_stream_t>(), Shutdown::shutdown_cb));
 		}
 
