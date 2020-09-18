@@ -40,5 +40,11 @@ namespace uvpp {
 		{
 			return Result(uv_timer_again(get()));
 		}
+
+		void timer_cb(const Callback& cb_timer)
+		{
+			m_cb_timer = cb_timer;
+		}
+
 	};
 }

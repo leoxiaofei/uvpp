@@ -1,6 +1,7 @@
 #pragma once
 
 #include "error.hpp"
+#include "callback.hpp"
 #include <uv.h>
 
 namespace uvpp
@@ -91,6 +92,44 @@ namespace uvpp
 			}
 		}
 
+	};
+
+	typedef std::function<void(class Fs*)> CallbackWithFs;
+
+	class Fs : public Request<Fs, uv_fs_t>
+	{ 
+		CallbackWithFs m_cb_fs;
+	public:
+		Fs(const CallbackWithFs& cb_fs)
+			: m_cb_fs(cb_fs)
+		{
+
+		}
+
+		~Fs()
+		{
+			uv_fs_req_cleanup(get());
+		}
+
+		static void fs_cb(uv_fs_t* req)
+		{
+			std::unique_ptr<Fs> sp(self(req));
+			if(sp->m_cb_fs)
+			{
+				sp->m_cb_fs(sp.get());
+			}
+
+			/*
+			  uv_fs_type fs_type;
+				uv_loop_t* loop;
+				uv_fs_cb cb;
+				ssize_t result;
+				void* ptr;
+				const char* path;
+				uv_stat_t statbuf;  //Stores the result of uv_fs_stat() and uv_fs_fstat(). 
+				UV_FS_PRIVATE_FIELDS
+			*/
+		}
 	};
 
 	class Work : public Request<Work, uv_work_t>

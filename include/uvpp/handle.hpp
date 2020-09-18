@@ -13,10 +13,10 @@ namespace uvpp {
 	template<typename HANDLE_O, typename HANDLE_T>
 	class Handle
 	{
-		typedef Handle<HANDLE_O, HANDLE_T> SELF;
 		HANDLE_T m_uv_handle;
 
 	public:
+		typedef Handle<HANDLE_O, HANDLE_T> SELF;
 		Callback m_cb_close;
 
 	protected:
@@ -27,7 +27,6 @@ namespace uvpp {
 
 		virtual ~Handle()
 		{
-			close();
 		}
 
 		Handle(const Handle&) = delete;
@@ -57,13 +56,28 @@ namespace uvpp {
 			return uv_is_active(get<uv_handle_t>()) != 0;
 		}
 
+		bool is_closing() const
+		{
+			return !!uv_is_closing(get<uv_handle_t>());
+		}
+
 		void close()
 		{
-			if (!uv_is_closing(get<uv_handle_t>()))
+			if (!is_closing())
 			{
 				uv_close(this->get<uv_handle_t>(), INVOKE_HD_CB(m_cb_close));
 			}
 		}
+
+		void close(const Callback& cb_close)
+		{
+			if (!is_closing())
+			{
+				m_cb_close = cb_close;
+				uv_close(this->get<uv_handle_t>(), INVOKE_HD_CB(m_cb_close));
+			}
+		}
+
 
 	protected:
 	};

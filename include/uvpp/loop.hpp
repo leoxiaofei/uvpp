@@ -26,12 +26,14 @@ public:
         {
             throw std::runtime_error("uv_loop_init error");
         }
+
+		m_uv_loop->data = this;
     }
 
 	Loop(std::unique_ptr<uv_loop_t, Deleter>& uv_loop)
 		: m_uv_loop(std::move(uv_loop))
 	{
-
+		m_uv_loop->data = this;
 	}
 
     /**

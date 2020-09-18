@@ -8,15 +8,17 @@
 namespace uvpp {
 	class Tcp : public Stream<Tcp, uv_tcp_t>
 	{
-	public:
-		Tcp()
-		{
-			uv_tcp_init(uv_default_loop(), get());
-		}
+		Callback m_cb_close_reset;
 
+	public:
 		Tcp(Loop& l)
 		{
-			uv_tcp_init(l.get(), get());
+			init(l);
+		}
+
+		Result init(Loop& l)
+		{
+			return Result(uv_tcp_init(l.get(), get()));
 		}
 
 		Result nodelay(bool enable)
@@ -46,6 +48,13 @@ namespace uvpp {
 			ip6_addr addr = to_ip6_addr(ip, port);
 			return Result(uv_tcp_bind(get(), reinterpret_cast<sockaddr*>(&addr), flags));
 		}
+
+		Result close_reset(const Callback& cb_close_reset)
+		{
+			m_cb_close_reset = cb_close_reset;
+			return Result(uv_tcp_close_reset(get(), INVOKE_HD_CB(m_cb_close_reset)));
+		}
+
 
 		Result connect(const std::string& ip, int port, const CallbackWithResult& cb_connect)
 		{
