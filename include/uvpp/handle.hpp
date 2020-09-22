@@ -2,6 +2,7 @@
 
 #include "error.hpp"
 #include "callback.hpp"
+#include <iostream>
 
 
 namespace uvpp {
@@ -13,7 +14,7 @@ namespace uvpp {
 	template<typename HANDLE_O, typename HANDLE_T>
 	class Handle
 	{
-		HANDLE_T m_uv_handle;
+		HANDLE_T* m_uv_handle;
 
 	public:
 		typedef Handle<HANDLE_O, HANDLE_T> SELF;
@@ -21,12 +22,18 @@ namespace uvpp {
 
 	protected:
 		Handle()
+			: m_uv_handle(new HANDLE_T)
 		{
-			m_uv_handle.data = this;
+			m_uv_handle->data = this;
+
+			std::cout << "Handle() " << this << std::endl;
 		}
 
 		virtual ~Handle()
 		{
+			Destory();
+
+			std::cout << "~Handle() " << this << std::endl;
 		}
 
 		Handle(const Handle&) = delete;
@@ -36,13 +43,13 @@ namespace uvpp {
 		template<typename T = HANDLE_T>
 		T* get()
 		{
-			return reinterpret_cast<T*>(&m_uv_handle);
+			return reinterpret_cast<T*>(m_uv_handle);
 		}
 
 		template<typename T = HANDLE_T>
 		const T* get() const
 		{
-			return reinterpret_cast<const T*>(&m_uv_handle);
+			return reinterpret_cast<const T*>(m_uv_handle);
 		}
 
 		template<typename SUB_REQUEST_T>
@@ -61,14 +68,6 @@ namespace uvpp {
 			return !!uv_is_closing(get<uv_handle_t>());
 		}
 
-		void close()
-		{
-			if (!is_closing())
-			{
-				uv_close(this->get<uv_handle_t>(), INVOKE_HD_CB(m_cb_close));
-			}
-		}
-
 		void close(const Callback& cb_close)
 		{
 			if (!is_closing())
@@ -78,8 +77,18 @@ namespace uvpp {
 			}
 		}
 
-
 	protected:
+		virtual void Destory()
+		{
+			if (!is_closing())
+			{
+				uv_close(this->get<uv_handle_t>(), [](uv_handle_t* handle) 
+				{
+					delete (HANDLE_T*)(handle);
+				});
+				m_uv_handle = nullptr;
+			}
+		}
 	};
 
 }
