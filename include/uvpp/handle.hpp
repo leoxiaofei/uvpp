@@ -2,7 +2,6 @@
 
 #include "error.hpp"
 #include "callback.hpp"
-#include <iostream>
 
 
 namespace uvpp {
@@ -25,15 +24,11 @@ namespace uvpp {
 			: m_uv_handle(new HANDLE_T)
 		{
 			m_uv_handle->data = this;
-
-			std::cout << "Handle() " << this << std::endl;
 		}
 
 		virtual ~Handle()
 		{
 			Destory();
-
-			std::cout << "~Handle() " << this << std::endl;
 		}
 
 		Handle(const Handle&) = delete;
