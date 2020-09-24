@@ -111,6 +111,37 @@ namespace uvpp
 			uv_fs_req_cleanup(get());
 		}
 
+		uv_stat_t* get_statbuf()
+		{
+			return uv_fs_get_statbuf(get());
+		}
+
+		const char* get_path() const
+		{
+			return uv_fs_get_path(get());
+		}
+
+		void* get_ptr() const
+		{
+			return uv_fs_get_ptr(get());
+		}
+
+		int get_system_error() const
+		{
+			return uv_fs_get_system_error(get());
+		}
+
+		uv_fs_type get_type() const
+		{
+			return uv_fs_get_type(get());
+		}
+
+		ssize_t get_result() const
+		{
+			return uv_fs_get_result(get());
+		}
+
+
 		static void fs_cb(uv_fs_t* req)
 		{
 			std::unique_ptr<Fs> sp(self(req));
