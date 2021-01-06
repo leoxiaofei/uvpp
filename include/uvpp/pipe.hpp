@@ -71,6 +71,11 @@ public:
         return uv_pipe_pending_count(get());
     }
 
+	void pending_instances(int count)
+	{
+		uv_pipe_pending_instances(get(), count);
+	}
+
     uv_handle_type pending_type()
     {
         return uv_pipe_pending_type(get());

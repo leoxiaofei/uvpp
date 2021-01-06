@@ -89,13 +89,14 @@ protected:
 	{
 		int n = 0;
 		size_t tmp = size >> 10;
-		for (size_t ix = 1; ; ix = ix << 1)
+		if (tmp)
 		{
-			if (ix >= tmp)
+			n += (size & 1023) ? 1 : 0;
+
+			for (size_t ix = 1; ix < tmp; ix = ix << 1)
 			{
-				break;
+				++n;
 			}
-			++n;
 		}
 		return n;
 	}

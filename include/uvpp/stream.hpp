@@ -77,6 +77,8 @@ namespace uvpp {
 							SELF::self(s)->m_cb_read_error();
 						}
 
+						//SELF::self(s)->m_cb_read = 0;
+						//SELF::self(s)->m_cb_read_error = 0;
 					}
 				}));
 		}
