@@ -53,17 +53,11 @@ public:
 		uv_async_init(l.get(), get(), AsyncQueue::cb_async);
 	}
 
-	void queue(Callback&& cb)
+	template<class TCallback>
+	void queue(TCallback&& cb)
 	{
 		std::lock_guard<std::mutex> locker(m_mx_queue);
-		m_cb_queue.push(std::move(cb));
-		send();
-	}
-
-	void queue(const Callback& cb)
-	{
-		std::lock_guard<std::mutex> locker(m_mx_queue);
-		m_cb_queue.push(cb);
+		m_cb_queue.push(std::forward<TCallback>(cb));
 		send();
 	}
 

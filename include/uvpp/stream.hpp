@@ -18,7 +18,7 @@ namespace uvpp {
 		typedef Stream<HANDLE_O, HANDLE_T> SELF;
 		CallbackWithResult m_cb_listen;
 		CallbackWithBuffer m_cb_read;
-		Callback m_cb_read_error;
+		CallbackWithResult m_cb_read_error;
 
 	protected:
 		Stream()
@@ -31,7 +31,7 @@ namespace uvpp {
 		}
 
 	public:
-		Result listen(CallbackWithResult cb_listen, int backlog = 128)
+		Result listen(const CallbackWithResult& cb_listen, int backlog = 128)
 		{
 			m_cb_listen = cb_listen;
 			return Result(uv_listen(this->template get<uv_stream_t>(), backlog,
@@ -45,7 +45,7 @@ namespace uvpp {
 		}
 
 		Result read_start(const CallbackWithBuffer& cb_read,
-			const Callback& cb_read_error)
+			const CallbackWithResult& cb_read_error)
 		{
 			m_cb_read = cb_read;
 			m_cb_read_error = cb_read_error;
@@ -54,6 +54,7 @@ namespace uvpp {
 				[](uv_handle_t*, size_t suggested_size, uv_buf_t* buf)
 				{
 					assert(buf);
+					suggested_size -= 8;
 					buf->base = DPool::malloc(suggested_size, &suggested_size);
 					buf->len = (int)suggested_size;
 				},
@@ -74,11 +75,8 @@ namespace uvpp {
 					{
 						if (SELF::self(s)->m_cb_read_error)
 						{
-							SELF::self(s)->m_cb_read_error();
+							SELF::self(s)->m_cb_read_error(Result((int)nread));
 						}
-
-						//SELF::self(s)->m_cb_read = 0;
-						//SELF::self(s)->m_cb_read_error = 0;
 					}
 				}));
 		}
@@ -88,39 +86,38 @@ namespace uvpp {
 			return Result(uv_read_stop(this->template get<uv_stream_t>()));
 		}
 
-		Result write(const char* buf, unsigned int len, CallbackWithResult callback)
-		{
-			uv_buf_t bufs[] = { uv_buf_init(const_cast<char*>(buf), len) };
-			return Result(uv_write(NewReq<Write>(callback), this->template get<uv_stream_t>(),
-				bufs, 1, &Write::write_cb));
-		}
+		//Result write(const char* buf, unsigned int len, const CallbackWithResult& callback)
+		//{
+		//	uv_buf_t bufs[] = { uv_buf_init(const_cast<char*>(buf), len) };
+		//	return Result(uv_write(NewReq<Write>(callback), this->template get<uv_stream_t>(),
+		//		bufs, 1, &Write::write_cb));
+		//}
 
-		Result write(const std::string& buf, CallbackWithResult callback)
-		{
-			uv_buf_t bufs[] = { uv_buf_init(const_cast<char*>(buf.c_str()),
-				static_cast<uint32_t>(buf.size())) };
-			return Result(uv_write(NewReq<Write>(callback), this->template get<uv_stream_t>(),
-				bufs, 1, &Write::write_cb));
-		}
+		//Result write(const std::string& buf, const CallbackWithResult& callback)
+		//{
+		//	uv_buf_t bufs[] = { uv_buf_init(const_cast<char*>(buf.c_str()),
+		//		static_cast<uint32_t>(buf.size())) };
+		//	return Result(uv_write(NewReq<Write>(callback), this->template get<uv_stream_t>(),
+		//		bufs, 1, &Write::write_cb));
+		//}
 
-		Result write(const std::vector<char>& buf, CallbackWithResult callback)
-		{
-			uv_buf_t bufs[] = { uv_buf_init(const_cast<char*>(&buf[0]),
-				static_cast<uint32_t>(buf.size())) };
-			return Result(uv_write(NewReq<Write>(callback), 
-				this->template get<uv_stream_t>(), bufs, 1, &Write::write_cb));
-		}
+		//Result write(const std::vector<char>& buf, const CallbackWithResult& callback)
+		//{
+		//	uv_buf_t bufs[] = { uv_buf_init(const_cast<char*>(&buf[0]),
+		//		static_cast<uint32_t>(buf.size())) };
+		//	return Result(uv_write(NewReq<Write>(callback), 
+		//		this->template get<uv_stream_t>(), bufs, 1, &Write::write_cb));
+		//}
 
 		template <typename...T>
-		Result write(CallbackWithResult callback, const T&... buf)
+		Result write(const CallbackWithResult& callback, const T&... buf)
 		{
-			uv_buf_t bufs[] = { uv_buf_init(const_cast<char*>(buf.data()),
-				static_cast<uint32_t>(buf.size()))... };
+			uv_buf_t bufs[] = { uv_buf_init(const_cast<char*>(buf.data()), static_cast<uint32_t>(buf.size()))... };
 			return Result(uv_write(NewReq<Write>(callback),
 				this->template get<uv_stream_t>(), bufs, sizeof...(T), &Write::write_cb));
 		}
 
-		Result shutdown(CallbackWithResult callback)
+		Result shutdown(const CallbackWithResult& callback)
 		{
 			return Result(uv_shutdown(NewReq<Shutdown>(callback),
 				this->template get<uv_stream_t>(), Shutdown::shutdown_cb));

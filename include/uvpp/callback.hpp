@@ -8,7 +8,7 @@
 namespace uvpp 
 {
 	typedef std::function<void()> Callback;
-	typedef std::function<void(Result)> CallbackWithResult;
+	typedef std::function<void(const Result&)> CallbackWithResult;
 
 /// Callback
 #define INVOKE_HD_CB(cb) [](auto* handle) \
