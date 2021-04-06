@@ -108,6 +108,11 @@ public:
         uv_stop(get());
     }
 
+	void addRef()
+	{
+		++m_uv_loop->active_handles;
+	}
+
 	Result queue_work(const Callback& cb_work)
 	{
 		return Result(uv_queue_work(get(), NewReq<Work>(cb_work),

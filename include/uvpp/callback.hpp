@@ -12,11 +12,11 @@ namespace uvpp
 
 /// Callback
 #define INVOKE_HD_CB(cb) [](auto* handle) \
-	{if(SELF::self(handle)->cb) SELF::self(handle)->cb();}
+	{if(Self::self(handle)->cb) Self::self(handle)->cb();}
 
 /// CallbackWithResult
 #define INVOKE_HD_CBRST(cb) [](auto* handle, int status) \
-	{if(SELF::self(handle)->cb) SELF::self(handle)->cb(Result(status));}
+	{if(Self::self(handle)->cb) Self::self(handle)->cb(Result(status));}
 
 }
 

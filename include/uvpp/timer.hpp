@@ -14,7 +14,8 @@ namespace uvpp {
 			uv_timer_init(uv_default_loop(), get());
 		}
 
-		Timer(Loop& l)
+		Timer(Loop& l, const Callback& cb_timer = Callback())
+			: m_cb_timer(cb_timer)
 		{
 			uv_timer_init(l.get(), get());
 		}
@@ -41,7 +42,7 @@ namespace uvpp {
 			return Result(uv_timer_again(get()));
 		}
 
-		void timer_cb(const Callback& cb_timer)
+		void set_timer_cb(const Callback& cb_timer)
 		{
 			m_cb_timer = cb_timer;
 		}

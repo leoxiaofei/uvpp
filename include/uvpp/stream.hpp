@@ -15,7 +15,7 @@ namespace uvpp {
 	class Stream : public Handle<HANDLE_O, HANDLE_T>
 	{
 	public:
-		typedef Stream<HANDLE_O, HANDLE_T> SELF;
+		typedef Stream<HANDLE_O, HANDLE_T> Self;
 		CallbackWithResult m_cb_listen;
 		CallbackWithBuffer m_cb_read;
 		CallbackWithResult m_cb_read_error;
@@ -66,16 +66,16 @@ namespace uvpp {
 
 					if (nread > 0)
 					{
-						if (SELF::self(s)->m_cb_read)
+						if (Self::self(s)->m_cb_read)
 						{
-							SELF::self(s)->m_cb_read(buf->base, nread);
+							Self::self(s)->m_cb_read(buf->base, nread);
 						}
 					}
 					else
 					{
-						if (SELF::self(s)->m_cb_read_error)
+						if (Self::self(s)->m_cb_read_error)
 						{
-							SELF::self(s)->m_cb_read_error(Result((int)nread));
+							Self::self(s)->m_cb_read_error(Result((int)nread));
 						}
 					}
 				}));

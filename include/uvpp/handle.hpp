@@ -13,6 +13,7 @@ namespace uvpp {
 	template<typename HANDLE_O, typename HANDLE_T>
 	class Handle
 	{
+		typedef Handle<HANDLE_O, HANDLE_T> Self;
 		HANDLE_T* m_uv_handle;
 
 	public:
