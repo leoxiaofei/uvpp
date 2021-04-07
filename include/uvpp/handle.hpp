@@ -13,12 +13,11 @@ namespace uvpp {
 	template<typename HANDLE_O, typename HANDLE_T>
 	class Handle
 	{
-		typedef Handle<HANDLE_O, HANDLE_T> Self;
 		HANDLE_T* m_uv_handle;
-
-	public:
-		typedef Handle<HANDLE_O, HANDLE_T> SELF;
 		Callback m_cb_close;
+	public:
+		typedef HANDLE_T Hwnd;
+		typedef Handle<HANDLE_O, HANDLE_T> Self;
 
 	protected:
 		Handle()

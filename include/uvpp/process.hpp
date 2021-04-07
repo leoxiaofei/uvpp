@@ -66,7 +66,7 @@ namespace uvpp {
 			uv_stdio_container_t& st_co = child_stdio[type];
 			st_co.flags = (uv_stdio_flags)(UV_CREATE_PIPE 
 				| (type > ST_IN ? UV_WRITABLE_PIPE : UV_READABLE_PIPE));
-			st_co.data.stream = pipe.get<uv_stream_t>();
+			st_co.data.stream = pipe.template get<uv_stream_t>();
 		}
 
 	protected:

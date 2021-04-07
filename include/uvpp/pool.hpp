@@ -132,7 +132,7 @@ protected:
 
 	static inline void clearSta(int n)
 	{
-		std::stack<char *>& pool = m_pools[ix];
+		std::stack<char *>& pool = m_pools[n];
 		std::atomic_flag& amf = m_amf[n];
 
 		while (amf.test_and_set());
