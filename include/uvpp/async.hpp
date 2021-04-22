@@ -63,7 +63,7 @@ public:
 
 	static void cb_async(uv_async_t* handle)
 	{
-		SELF::self(handle)->run();
+		Self::self(handle)->run();
 	}
 
 

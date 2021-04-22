@@ -52,9 +52,8 @@ namespace uvpp {
 		Result close_reset(const Callback& cb_close_reset)
 		{
 			m_cb_close_reset = cb_close_reset;
-			return Result(uv_tcp_close_reset(get(), INVOKE_HD_CB(m_cb_close_reset)));
+			return Result(uv_tcp_close_reset(get(), INVOKE_CLOSE_CB(m_cb_close_reset)));
 		}
-
 
 		Result connect(const std::string& ip, int port, const CallbackWithResult& cb_connect)
 		{

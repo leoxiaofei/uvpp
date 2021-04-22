@@ -35,7 +35,7 @@ namespace uvpp {
 		{
 			m_cb_listen = cb_listen;
 			return Result(uv_listen(this->template get<uv_stream_t>(), backlog,
-				INVOKE_HD_CBRST(m_cb_listen)));
+				INVOKE_CONNECT_CB(m_cb_listen)));
 		}
 
 		Result accept(Stream& client)
