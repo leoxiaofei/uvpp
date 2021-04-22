@@ -30,7 +30,7 @@ public:
 		m_uv_loop->data = this;
     }
 
-	Loop(std::unique_ptr<uv_loop_t, Deleter>& uv_loop)
+	Loop(std::unique_ptr<uv_loop_t, Deleter>&& uv_loop)
 		: m_uv_loop(std::move(uv_loop))
 	{
 		m_uv_loop->data = this;
@@ -137,7 +137,7 @@ public:
 			if (uv_loop_t* def = uv_default_loop())
 			{
 				auto ptr = std::unique_ptr<uv_loop_t, Deleter>(def, [](uv_loop_t *) {});
-				loop = std::make_shared<Loop>(ptr);
+				loop = std::make_shared<Loop>(std::move(ptr));
 				ref = loop;
 			}
 		}
