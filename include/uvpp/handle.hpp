@@ -68,7 +68,7 @@ namespace uvpp {
 			if (!is_closing())
 			{
 				m_cb_close = cb_close;
-				uv_close(this->get<uv_handle_t>(), INVOKE_HD_CB(m_cb_close));
+				uv_close(this->get<uv_handle_t>(), INVOKE_CLOSE_CB(m_cb_close));
 			}
 		}
 

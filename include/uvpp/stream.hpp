@@ -86,28 +86,12 @@ namespace uvpp {
 			return Result(uv_read_stop(this->template get<uv_stream_t>()));
 		}
 
-		//Result write(const char* buf, unsigned int len, const CallbackWithResult& callback)
-		//{
-		//	uv_buf_t bufs[] = { uv_buf_init(const_cast<char*>(buf), len) };
-		//	return Result(uv_write(NewReq<Write>(callback), this->template get<uv_stream_t>(),
-		//		bufs, 1, &Write::write_cb));
-		//}
-
-		//Result write(const std::string& buf, const CallbackWithResult& callback)
-		//{
-		//	uv_buf_t bufs[] = { uv_buf_init(const_cast<char*>(buf.c_str()),
-		//		static_cast<uint32_t>(buf.size())) };
-		//	return Result(uv_write(NewReq<Write>(callback), this->template get<uv_stream_t>(),
-		//		bufs, 1, &Write::write_cb));
-		//}
-
-		//Result write(const std::vector<char>& buf, const CallbackWithResult& callback)
-		//{
-		//	uv_buf_t bufs[] = { uv_buf_init(const_cast<char*>(&buf[0]),
-		//		static_cast<uint32_t>(buf.size())) };
-		//	return Result(uv_write(NewReq<Write>(callback), 
-		//		this->template get<uv_stream_t>(), bufs, 1, &Write::write_cb));
-		//}
+ 		Result write(const char* buf, unsigned int len, const CallbackWithResult& callback)
+ 		{
+ 			uv_buf_t bufs[] = { uv_buf_init(const_cast<char*>(buf), len) };
+ 			return Result(uv_write(NewReq<Write>(callback), this->template get<uv_stream_t>(),
+ 				bufs, 1, &Write::write_cb));
+ 		}
 
 		template <typename...T>
 		Result write(const CallbackWithResult& callback, const T&... buf)
